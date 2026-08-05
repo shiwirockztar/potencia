@@ -1,0 +1,110 @@
+Optoacoplador 6N135: Es un optocoplador de un canal diseñado para alta velocidad, a diferencia de otros optoacopladores que implementan un fototransistor simple, este implementa un led de AIGaAs (Arsenio de Aluminio) y un transistor de alta velocidad BJT NPN. Su funcionamiento se basa en: el momento en que la corriente circula por el led de entrada, este emite luz infrarroja, la cual es captada por el fotodiodo, la corriente que pasa por el fotodiodo es amplificada por el transistor interno en configuración de colector abierto y emisor común, de este modo con la separación del fotodiodo del transistor, permite que sea más rápido el conmutar su señal y reduce la capacitancia de base.
+Parámetros
+Valor máximo
+Símbolo
+INPUT(LED)
+-
+-
+Corriente directa
+25 mA
+IF
+Corriente pico directa
+50 mA
+IFMS
+Corriente maxima pico
+1 A
+Voltaje de reversa
+5 V
+VR
+Potencia máxima disipada
+45 mW
+PIN
+OUTPUT(transistor)
+-
+-
+Corriente promedio
+8 mA
+IO
+Corriente pico
+16 mA
+IOpk
+Voltaje de alimentación
+-0.5 a 15 V
+VCC
+Voltaje de salida
+-0.5 a 15 V
+VO
+Voltaje de Base
+5 V
+VB
+Potencia máxima disipada
+100 mW
+POUT
+Temperatura de operación
+-55 a +100 Celcius
+TOPR
+Voltaje de aislamiento
+2500 a 5000 Vrms
+VISO
+Optodriver TLP350: Es un optoacoplador controlador de compuerta, diseñado para manejar transistores de potencia como los MOSFET o IGBT. Este optoacoplador se compone por un LED infrarrojo GaAIAs en la entrada y un fotodetector con circuito integrado de salida, que puede absorber y entregar corriente de compuerta. El funcionamiento es similar al 6N135, con la diferencia que al recibir la luz infrarroja la etapa de salida, la corriente que entrega va al MOSFET o IGBT para elevar la tensión de compuerta así encendiéndose, cuando se apaga, el driver lleva la carga de la compuerta a tierra, apagando el transistor.
+Parámetro
+Valor máximo
+Símbolo
+INPUT(LED)
+Corriente de entrada
+20 mA
+IF
+Corriente pico
+1 A
+IFP
+Voltaje inverso
+5 V
+VR
+OUTPUT(DRIVER)
+Corriente pico salida HIGH
+2.5 A
+IOPH
+Corriente pico salida LOW
+-2.5 A
+IOPL
+Tensión máxima de alimentación. Ta mayor a 95°C
+35 V
+VCC
+Reducción de Vcc por encima de 95°C
+-1 V/°C
+⧍VCC/⧍Ta
+Temperatura de operación
+-40 a 100 °C
+TOPR
+Temperatura de almacenamiento
+-55 a 125 °C
+Tstg
+Voltaje de aislamiento
+3750 Vrms
+BVs
+Circuito integrado CD40106: Es un integrado CMOS que tiene 6 inversores independientes con entrada Schmitt Trigger, se utiliza para invertir señales digitales, limpiar señales ruidosas, generar pulsos y construir osciladores RC, con la entrada Schmitt Trigger se presenta un ciclo de histéresis donde:
+Al subir el voltaje de entrada la salida cambia al superar el umbral de voltaje superior y al bajar el voltaje de entrada, la salida cambia cuando cae por debajo del umbral inferior.
+Parámetro
+Valor máximo
+Símbolo
+INPUT
+Corriente máxima
+⩲ 10 mA
+IIN
+Voltaje de entrada
+-0.5 a ⩲ 18 V
+VIN
+Corriente máxima a 18 V
+⩲ 1uA
+IIN
+OUTPUT
+Corriente de salida LOW
+2.4 mA
+IOL
+Corriente de salida HIGH
+-2.4 mA
+IOH
+Referencias: AlGaAs: Capítulo 3 Diodos Emisores de Luz Roja AlGaAs - ScienceDirect
+6N135 pdf, 6N135 Description, 6N135 Datasheet, 6N135 view ::: ALLDATASHEET :::
+TLP350 pdf, TLP350 Description, TLP350 Datasheet, TLP350 view ::: ALLDATASHEET :::
+CD40106 pdf, CD40106 Description, CD40106 Datasheet, CD40106 view ::: ALLDATASHEET :::

@@ -85,7 +85,7 @@ detect-all
 \setlength{\headheight}{15pt} % Corrige el warning de fancyhdr
 \usepackage{latexsym} % para el símbolo de polaridad de la batería
 
-\newcommand{\estudiantes}{José R. Ortiz-Castrillón, Estudiante 2, Estudiante 3}
+\newcommand{\estudiantes}{Jose Leonardo Perez Poveda, Sergio Hoyos Mejía, Estudiante 3}
 % -------------------- Documento --------------------
 \begin{document}
 
@@ -124,22 +124,65 @@ Implementar circuitos de disparo para dispositivos MOSFET e IGBT, operando como 
 
 % -------------------- Preinforme --------------------
 \section{Preinforme}
-Se debe entregar/presentar lo siguiente al momento de entrar al laboratorio, la falta de alguno de estos implicará una calificación de 0.0 en la práctica:
+En esta sección se presenta el avance desarrollado hasta el momento, siguiendo la pauta solicitada para el preinforme.
 
-\subsection{Consultar:}
+\subsection{Consultar}
+
+\subsubsection{Optoacoplador 6N135}
+El 6N135 es un optoacoplador de un canal para alta velocidad. Internamente usa un LED de entrada y una etapa de salida con transistor NPN de colector abierto, lo que permite aislamiento galvánico entre la etapa de control y la etapa de potencia. Su principio de funcionamiento consiste en convertir la señal eléctrica de entrada en luz y luego volverla a convertir en señal eléctrica en la salida aislada.
+
+Parámetros destacados reportados en la consulta:
 \begin{itemize}
-    \item Optoacoplador 6N135: Características, funcionamiento, limites operativos (frecuencia, corriente, voltaje, etc).
-    \item Optodriver TLP350: Características, funcionamiento, limites operativos (frecuencia, corriente, voltaje, etc).
-    \item Circuito integrado CD40106: Características, funcionamiento, limites operativos (frecuencia, corriente, voltaje, etc).
-    \item MOSFET IRFZ44N, condiciones para la operación como interruptor.
-    \item IGBT GP10N60, condiciones para la operación como interruptor.
+    \item Corriente directa del LED: \SI{25}{mA}.
+    \item Corriente pico directa del LED: \SI{50}{mA}.
+    \item Voltaje inverso del LED: \SI{5}{V}.
+    \item Corriente promedio de salida: \SI{8}{mA}.
+    \item Corriente pico de salida: \SI{16}{mA}.
+    \item Rango de voltaje de alimentación/salida: \SIrange{-0.5}{15}{V}.
+    \item Voltaje de aislamiento: \SIrange{2500}{5000}{V_{rms}}.
 \end{itemize}
 
+\subsubsection{Optodriver TLP350}
+El TLP350 es un optoacoplador con etapa de potencia para manejo de compuerta en MOSFET e IGBT. A diferencia del 6N135, su salida está diseñada para entregar y absorber corriente de compuerta, facilitando encendido y apagado rápidos del interruptor.
+
+Parámetros destacados reportados en la consulta:
+\begin{itemize}
+    \item Corriente de entrada del LED: \SI{20}{mA}.
+    \item Corriente pico de entrada: \SI{1}{A}.
+    \item Voltaje inverso de entrada: \SI{5}{V}.
+    \item Corriente pico de salida en alto: \SI{2.5}{A}.
+    \item Corriente pico de salida en bajo: \SI{-2.5}{A}.
+    \item Tensión máxima de alimentación: \SI{35}{V}.
+    \item Voltaje de aislamiento: \SI{3750}{V_{rms}}.
+\end{itemize}
+
+\subsubsection{Circuito integrado CD40106}
+El CD40106 es un integrado CMOS con seis inversores Schmitt Trigger independientes. Se usa para invertir señales lógicas y mejorar su inmunidad al ruido, gracias al efecto de histéresis en los umbrales de conmutación.
+
+Parámetros destacados reportados en la consulta:
+\begin{itemize}
+    \item Rango de voltaje de entrada: \SIrange{-0.5}{18}{V}.
+    \item Corriente de entrada típica muy baja (orden de \si{\micro\ampere}).
+    \item Corriente de salida LOW: \SI{2.4}{mA}.
+    \item Corriente de salida HIGH: \SI{-2.4}{mA}.
+\end{itemize}
+
+\subsubsection{MOSFET IRFZ44N e IGBT GP10N60}
+Este apartado se encuentra \textbf{pendiente} de completar en el siguiente avance, incluyendo condiciones de operación como interruptor (región de conducción, parámetros de compuerta y limitaciones térmicas/eléctricas).
+
 \subsection{Código PWM}
-Hacer un código para el microcontrolador de su elección (STM32 o ESP32 o Raspberry PI Pico) que genere un PWM con ciclo de trabajo y frecuencia variable (60Hz-40kHz) por interfaz serial; el código se presenta en la interfaz del PC.
+Este apartado se encuentra \textbf{pendiente}. En la siguiente versión se incorporará el código para STM32/ESP32/Raspberry Pi Pico con control serial de frecuencia (\SIrange{60}{40000}{Hz}) y ciclo útil.
 
 \subsection{Simulaciones}
-Simular los circuitos de la \cref{fOptoMosfet} y la \cref{fOptodIGBT}, se recomienda la versión actualizada de LTspice disponible en \cite{ltspice} y hacer/consultar las librerías de los componentes que no se encuentren por defecto en el simulador; las simulaciones se presentan directamente en el simulador (PC).
+Este apartado se encuentra \textbf{pendiente}. Se incluirán simulaciones en LTspice para los circuitos de la \cref{fOptoMosfet} y la \cref{fOptodIGBT}, junto con el análisis comparativo de formas de onda.
+
+\subsection{Fuentes consultadas}
+\begin{itemize}
+    \item Hoja de datos de 6N135.
+    \item Hoja de datos de TLP350.
+    \item Hoja de datos de CD40106.
+    \item Material de apoyo sobre LED AlGaAs (ScienceDirect).
+\end{itemize}
 
 %--------------------------Práctica-----------------------
 
