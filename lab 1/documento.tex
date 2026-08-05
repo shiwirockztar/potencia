@@ -1,0 +1,293 @@
+\documentclass[12pt]{article}
+
+% -------------------- Idioma y codificación --------------------
+\usepackage[spanish]{babel}
+\addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+% -------------------- Formato de página --------------------
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{setspace}
+\setstretch{1.15}
+
+% -------------------- Colores --------------------
+\usepackage{xcolor}
+\definecolor{tituloazul}{RGB}{31,100,160}
+\definecolor{barraazul}{RGB}{210,230,250}
+
+% -------------------- Links clickeables --------------------
+\usepackage[
+colorlinks=true,
+linkcolor=tituloazul,
+citecolor=tituloazul,
+urlcolor=tituloazul
+]{hyperref}
+
+% -------------------- Estilo de secciones --------------------
+\usepackage{titlesec}
+\titleformat{\section}
+{\color{tituloazul}\large\bfseries}
+{\thesection}{1em}{}
+\titleformat{\subsection}
+{\color{tituloazul}\normalsize\bfseries}
+{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+{\color{tituloazul}\normalsize\bfseries}
+{\thesubsubsection}{1em}{}
+
+% -------------------- Encabezados automáticos --------------------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+
+\fancyhf{}
+\fancyhead[L]{\textcolor{tituloazul}{Electrónica de Potencia}}
+\fancyhead[R]{\textcolor{tituloazul}{Práctica 1}}
+\fancyfoot[C]{\thepage}
+
+% -------------------- Figuras --------------------
+\usepackage{graphicx}
+\graphicspath{{figuras/}}
+
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+
+% -------------------- Matemáticas --------------------
+\usepackage{amsmath}
+\usepackage[spanish,capitalize,nameinlink]{cleveref}
+\crefname{figure}{figura}{figuras}
+\Crefname{figure}{Figura}{Figuras}
+\crefname{equation}{ecuación}{ecuaciones}
+\Crefname{equation}{Ecuación}{Ecuaciones}
+\crefname{table}{tabla}{tablas}
+\Crefname{table}{Tabla}{Tablas}
+
+\usepackage{siunitx}
+
+\sisetup{
+per-mode=symbol,
+detect-all
+}
+
+% -------------------- Tablas profesionales --------------------
+\usepackage{booktabs}
+%\usepackage{tabularx}
+
+% -------------------- Referencias IEEE --------------------
+\usepackage{cite}
+
+% -------------------- Grafica circuitos --------------------
+\usepackage[spanish]{babel}
+\usepackage[siunitx]{circuitikz}
+\usetikzlibrary{babel} % Crucial para evitar conflictos con el idioma español
+\setlength{\headheight}{15pt} % Corrige el warning de fancyhdr
+\usepackage{latexsym} % para el símbolo de polaridad de la batería
+
+\newcommand{\estudiantes}{José R. Ortiz-Castrillón, Estudiante 2, Estudiante 3}
+% -------------------- Documento --------------------
+\begin{document}
+
+
+% -------------------- Título --------------------
+\begin{center}
+    {\Huge \textcolor{tituloazul}{\textbf{Práctica 1}\\ Interruptores de Electrónica de Potencia y Circuitos de Disparo. Parte 1}}
+    \vspace{0.6cm}
+
+    {\textbf{\estudiantes}}
+    \vspace{0.5cm}
+
+    \textit{Ingeniería Electrónica}\\
+    \textit{Universidad de Antioquia}\\
+    \textit{Medellín-Colombia}
+\end{center}
+
+\vspace{0.5cm}
+
+% -------------------- Resumen --------------------
+\noindent\textcolor{tituloazul}{\textbf{Resumen:}} Esta práctica se enfoca en la caracterización y control de interruptores de estado sólido básicos en electrónica de potencia (MOSFET e IGBT). Se analizará la interacción entre señales de control de baja potencia generadas por un microcontrolador y las etapas de conmutación, mediante la implementación física de circuitos de disparo (Gate Drivers) con aislamiento galvánico (optoacopladores y optodrivers). Se validará el funcionamiento de los controladores de compuerta  y la respuesta dinámica de los interruptores mediante mediciones de laboratorio, comparando los tiempos de conmutación, caídas de tensión y el comportamiento de los dispositivos en condiciones reales de operación.
+
+
+% -------------------- Objetivos --------------------
+\section{Objetivo General}
+Implementar circuitos de disparo para dispositivos MOSFET e IGBT, operando como interruptores, controlando la potencia suministrada a cargas eléctricas, mediante un microcontrolador.
+
+\section{Objetivos Específicos}
+    \begin{itemize}
+        \item Analizar el funcionamiento de los dispositivos MOSFET e IGBT variando sus señales de conmutación e identificando sus diferencias en aplicaciones de electrónica de potencia.
+        \item Implementar aislamiento galvánico entre las etapas de control y potencia mediante el uso de optoacopladores, como medida de protección, separando el control de la etapa de potencia.
+        \item Controlar la potencia suministrada a las cargas eléctricas a través de la modulación por ancho de pulso (PWM).
+    \end{itemize}
+
+\newpage % salto de pagina
+
+% -------------------- Preinforme --------------------
+\section{Preinforme}
+Se debe entregar/presentar lo siguiente al momento de entrar al laboratorio, la falta de alguno de estos implicará una calificación de 0.0 en la práctica:
+
+\subsection{Consultar:}
+\begin{itemize}
+    \item Optoacoplador 6N135: Características, funcionamiento, limites operativos (frecuencia, corriente, voltaje, etc).
+    \item Optodriver TLP350: Características, funcionamiento, limites operativos (frecuencia, corriente, voltaje, etc).
+    \item Circuito integrado CD40106: Características, funcionamiento, limites operativos (frecuencia, corriente, voltaje, etc).
+    \item MOSFET IRFZ44N, condiciones para la operación como interruptor.
+    \item IGBT GP10N60, condiciones para la operación como interruptor.
+\end{itemize}
+
+\subsection{Código PWM}
+Hacer un código para el microcontrolador de su elección (STM32 o ESP32 o Raspberry PI Pico) que genere un PWM con ciclo de trabajo y frecuencia variable (60Hz-40kHz) por interfaz serial; el código se presenta en la interfaz del PC.
+
+\subsection{Simulaciones}
+Simular los circuitos de la \cref{fOptoMosfet} y la \cref{fOptodIGBT}, se recomienda la versión actualizada de LTspice disponible en \cite{ltspice} y hacer/consultar las librerías de los componentes que no se encuentren por defecto en el simulador; las simulaciones se presentan directamente en el simulador (PC).
+
+%--------------------------Práctica-----------------------
+
+\section{Práctica}
+Durante la práctica se deben implementar los circuitos de la \cref{fOptoMosfet} y la \cref{fOptodIGBT} en protoboard. Se debe ajustar la fuente de potencia a máximo 12Vdc y 5Amp. Las preguntas planteadas en esta sección se deben responder durante la práctica.
+
+\subsection{Optoacoplador y Mosfet}
+Implementar el circuito de la \cref{fOptoMosfet}, la frecuencia y ancho de pulso (duty) se le indicará durante la práctica. 
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\textwidth]{fOptoMosfet}
+\caption{Circuito de disparo para Mosfet con optoacoplador de alta velocidad.}
+\label{fOptoMosfet}
+\end{figure}
+
+
+
+\begin{itemize}
+    \item Para la frecuencia y duty dados, obtenga las gráficas de los PWM en el microcontrolador y después del optoacoplador. ¿tienen la misma forma de onda? ¿por qué?
+    \item Mida el PWM después del CD40106, ¿para qué sirve este componente en el circuito? ¿qué nombre recibe esta función?
+    \item Mida el PWM en el gate-source del mosfet y comparelo con los PWM de las etapas anteriores, ¿qué es y para qué sirve un driver de disparo?
+    \item ¿como se llama el arreglo formado por Q2 y Q3? ¿para qué sirve?
+\end{itemize}
+
+
+\subsection{OptoDriver e IGBT}
+Implementar el circuito de la \cref{fOptodIGBT}, la frecuencia y ancho de pulso se le indicará durante la práctica.
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\textwidth]{fOptodIGBT}
+\caption{Circuito de disparo con optodriver de alta velocidad: MOSFET vs IGBT.}
+\label{fOptodIGBT}
+\end{figure}
+
+\begin{itemize}
+    \item ¿Porque en este circuito no se usa el arreglo de Q2 y Q3 del primer circuito?
+    \item ¿cuál es la función de R2 y R4 en el circuito?
+    \item Fije el duty al 80\% y haga un barrido en frecuencia para f=60Hz, f=500Hz, f=10kHz y f=30kHz. Mida/Analice la forma del PWM directamente en la carga y mida la temperatura del MOSFET, luego repita el procedimiento con el IGBT y compare los resultados. Según su criterio, ¿cual de de los dos interruptores es mejor?
+\end{itemize}
+
+
+
+% ------------------------- Resultados -----------------
+
+\section{Informe (Resultados y Análisis)}
+Se deben presentar las gráficas/fotos y tablas obtenidas de forma organizada y técnica. El análisis no debe ser una descripción narrativa de los datos, sino una interpretación basada en fundamentos obtenidos de la experimentación con su respectiva justificación. Se debe:
+
+\begin{itemize}
+    \item Comparar los resultados obtenidos entre las diversas configuraciones o puntos de operación evaluados.
+    \item Justificar el comportamiento de las variables críticas basándose en los fundamentos teóricos del sistema.
+\end{itemize}
+
+Se deben responder las preguntas planteadas para resolver durante la práctica, junto con las siguientes preguntas para el informe:
+
+\begin{itemize}
+    \item ¿Cuál es la justificación técnica para implementar aislamiento galvánico entre las etapas de control y potencia?
+    \item ¿por qué hay dos tierras diferentes en los circuitos?
+    \item ¿Qué son los circuitos lógicos digitales TTL?
+    \item ¿Qué son los circuitos lógicos digitales CMOS?
+\end{itemize}
+
+
+% ------------------------- Conclusiones ---------------
+\section{Conclusiones}
+Deben ser deducciones técnicas basadas en los resultados y el análisis previo. Relaciónelas directamente con los objetivos de la práctica y evite frases genéricas como "se aprendió mucho", "Se aprendió a utilizar el software", "Los resultados obtenidos son iguales a la teoría", "La práctica fue muy interesante", etc.
+
+% -------------------- Bibliografía --------------------
+\bibliographystyle{IEEEtran}
+\bibliography{bibliografia}
+
+% ---------------------componentes----------------------
+\newpage
+
+\section*{Listado de Equipos, Herramientas y Componentes}
+
+{\textbf{\estudiantes}}
+
+\begin{table}[H]
+    \centering
+    \caption{Elementos a solicitar al laboratorista para la práctica.}
+    \resizebox{0.8\textwidth}{!}{
+    \begin{tabular}{c p{11cm} c} 
+    \toprule
+    \toprule
+    \textit{Item} & \textit{Elemento} & \textit{Cantidad} \\
+    \midrule
+    1  & Osciloscopio + 1 punta de voltaje & 1 \\
+    \midrule
+    2  & Multímetro + 2 puntas de banana-caimán & 1\\
+    \midrule
+    3  & Fuente DC + 4 puntas banana-caimán & 1\\
+    \midrule
+    4  & Protoboard & 1\\
+    \midrule
+    5  & cámara térmica & 1\\
+    \midrule
+    6  & Pelacables & 1\\
+    \midrule
+    7  & Microcontrolador (STM32 o ESP32 o Raspberry PI Pico)  & 1 \\
+    \midrule
+    8  & Optoacoplador 6N135 & 1\\
+    \midrule
+    9  & Optodriver TLP350 & 1\\
+    \midrule
+    10  & MOSFET IRFZ44N & 1\\
+    \midrule
+    11  & IGBT GP10N60 & 1\\
+    \midrule
+    12  & Circuito integrado CD40106 & 1\\
+    \midrule
+    13 & Transistor 2N2222 & 2\\
+    \midrule
+    14 & Transistor 2N2907 & 1\\
+    \midrule
+    15 & Alambre UTP & 10\\
+    \midrule
+    16  & Bombillo 12v & 2\\
+    \midrule
+    17  & Resistencia 10k$\Omega$ & 2\\
+    \midrule
+    18  & Resistencia 220$\Omega$ & 1\\
+    \midrule
+    19  & Resistencia 10$\Omega$ & 1\\
+    \midrule
+    20  & Resistencia 4.7k$\Omega$ & 1\\
+    \midrule
+    21  & Resistencia 6.8k$\Omega$ & 1\\
+    \midrule
+    22  & Capacitor 330$p$f  & 1\\
+    \midrule
+    23  &   & \\
+    \midrule
+    24  &   & \\
+    \midrule
+    25  &   & \\
+    \midrule
+    26  &   & \\
+    \midrule
+    27  &   & \\
+    \midrule
+    \bottomrule
+    \end{tabular}
+    }
+    \label{tElementos}
+\end{table}
+
+\end{document}
