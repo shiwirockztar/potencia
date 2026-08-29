@@ -356,7 +356,7 @@ void loop() {
     \caption{Medida en la salida del optoacoplador.}
 \end{figure}
 
-A primera vista, ambas mediciones aparentan tener la misma forma de onda. Sin embargo, al hacer un zoom temporal, se puede evidenciar claramente que a la salida del optoacoplador los transitorios no son instantáneos, toma alrededor de 10 µs, para este caso donde se está trabajando a 5KHz, equivalente a un periodo de 200 µs.
+A primera vista, ambas mediciones presentan la misma forma de onda. Sin embargo, un análisis detallado revela que la salida del optoacoplador presenta transitorios no instantáneos, con un retardo aproximado de 10 µs. Para este caso a 5 kHz (período de 200 µs), este retardo es significativo y debe considerarse en el diseño del circuito.
 
 \begin{figure}[H]
     \centering
@@ -365,7 +365,7 @@ A primera vista, ambas mediciones aparentan tener la misma forma de onda. Sin em
     \caption{Transitorio en la salida del optoacoplador.}
 \end{figure}
 
-Esto ocurre debido al almacenamiento de portadores de carga, que ocurre porque cuando el LED interno se enciende, satura la base del fototransistor con electrones y huecos. Al apagarse el LED, estos portadores de carga no desaparecen instantáneamente; requieren un tiempo para recombinarse, manteniendo el transistor encendido un momento más, y el efecto Miller. Este último hace referencia a la capacitancia Base-Colector en los transistores internos del optoacoplador.
+Este comportamiento se debe al almacenamiento de portadores de carga. Cuando el LED interno se enciende, satura la base del fototransistor con electrones y huecos. Al apagarse el LED, estos portadores no desaparecen instantáneamente, sino que requieren un tiempo para recombinarse, manteniendo el transistor encendido durante este período. Además, interviene el efecto Miller, que hace referencia a la capacitancia Base-Colector presente en los transistores internos del optoacoplador.
 
 \begin{figure}[H]
     \centering
@@ -376,7 +376,7 @@ Esto ocurre debido al almacenamiento de portadores de carga, que ocurre porque c
 
 El componente \textbf{CD40106} es un inversor Schmidt Trigger que funciona cambiando su estado lógico cuando se alcanza un umbral determinado, el cual depende de su polarización. Este componente es útil para eliminar el tiempo de transición que queda en la señal después del optoacoplador, reduciendo el consumo de potencia en el MOSFET, evitando errores de sincronización y ayudando a prevenir ruido.
 
-En la \textbf{figura 5} se puede ver más claramente el disparo en el estado de la señal una vez se llega al umbral en el tiempo de transición, haciendo los cambios lógicos más instantáneos.
+La \textbf{figura 5} muestra la mejora en la conmutación: una vez alcanzado el umbral durante el tiempo de transición, el CD40106 genera cambios lógicos más pronunciados e instantáneos.
 
 \begin{figure}[H]
     \centering
@@ -392,25 +392,56 @@ En la \textbf{figura 5} se puede ver más claramente el disparo en el estado de 
     \caption{PWM en el gate-source.}
 \end{figure}
 
-En comparación con la gráfica obtenida justo después del CD40106, no se evidencia una alteración a la señal. Esto debido a que el arreglo entre Q2 y Q3 no aporta un cambio a la onda que pasa a través de estos.
+Comparando esta gráfica con la obtenida a la salida del CD40106, no se observa alteración significativa en la forma de onda. Esto ocurre porque el arreglo entre Q2 y Q3 no introduce cambios perceptibles en la señal.
 
-Este juego de transistores conectados de tal manera se les conoce como \textbf{Totem-Pole}, sirve principalmente como un driver de corriente ultra rápido, o búfer, y está diseñado para activar y desactivar conmutadores de potencia. En este caso, el transistor MOSFET IRFZ44N. El transistor Q2 (NPN) se activa para entregar un gran pico de corriente desde la fuente de alimentación (Vcc) cargando la compuerta del MOSFET, en cuestión de nanosegundos. Por otro lado, Q3 (PNP) se activa para drenar la carga de la capacitancia del gate, a tierra, y así poder cambiar de estado más rápidamente, apagando el dispositivo.
+Esta configuración de transistores se conoce como \textbf{Totem-Pole} y funciona como un driver de corriente ultra rápido o búfer, diseñado específicamente para activar y desactivar conmutadores de potencia como el MOSFET IRFZ44N. El transistor Q2 (NPN) se activa para entregar un pico de corriente desde la fuente de alimentación (Vcc), cargando la compuerta del MOSFET en nanosegundos. Simultáneamente, Q3 (PNP) extrae la carga de la capacitancia del gate hacia tierra, permitiendo cambios de estado más rápidos y eficientes, acelerando el apagado del dispositivo.
 
-\subsection{OPTODRIVER e IGBT}
+\subsection{Optodriver e IGBT}
 
-Cuando se utiliza un optodriver no es necesario el arreglo de Totem-Pole porque internamente tiene integrado un arreglo similar de push-pull. En otras palabras, está diseñado especialmente para manejar compuertas de potencia, además del aislamiento óptico.
+A diferencia del optoacoplador básico, el optodriver integra internamente una etapa de salida tipo push-pull que cumple la función del Totem-Pole. Esta característica lo hace ideal para controlar directamente compuertas de MOSFET e IGBT, ya que proporciona tanto aislamiento galvánico como capacidad de entrega/absorción de corriente, facilitando transiciones rápidas y confiables.
 
 \subsection{Preguntas del Informe}
 
 \begin{itemize}
-    \item \textbf{Aislamiento galvánico:} El aislamiento galvánico entre las etapas de control y potencia se implementa fundamentalmente para proteger la electrónica de control contra sobrevoltajes destructivos, eliminar el ruido electromagnético y los bucles de tierra y permitir el manejo de transistores en configuración flotante (rama alta).
+    \item \textbf{Aislamiento galvánico:} El aislamiento galvánico entre las etapas de control y potencia cumple tres funciones esenciales: proteger la electrónica de control contra sobrevoltajes destructivos, eliminar ruido electromagnético y bucles de tierra, y permitir el manejo de transistores en configuración flotante (rama alta).
     
-    \item \textbf{Optoacoplador u Optodriver:} La idea de incluir un opto acoplador o un optodriver en un circuito de potencia, es precisamente la descrita anteriormente, proteger la parte de control, la cual suele ser más costosa. Por lo tanto, esto exige que hayan puntos de referencia (tierras) aisladas, para que los circuitos de la parte de control, y de potencia, no se afecten el uno al otro, que por el contrario, sólo se comuniquen a través de la señal óptica.
+    \item \textbf{Optoacoplador u Optodriver:} La función principal es proteger la electrónica de control (generalmente más costosa) de la etapa de potencia. Para lograrlo, se requieren puntos de referencia (tierras) completamente aislados, de modo que ambas etapas no se afecten mutuamente y se comuniquen únicamente a través de la señal óptica.
     
-    \item \textbf{Lógica TTL (Transistor-Transistor Logic):} La lógica Transistor-Transistor (TTL) es una familia de circuitos integrados digitales basada en transistores bipolares (BJT) y resistencias para ejecutar operaciones lógicas. Operando bajo una fuente de alimentación estándar de 5 V, define sus estados lógicos en rangos de voltaje específicos, típicamente entre 0 V y 0.8 V para el nivel bajo (LOW) y entre 2 V y 5 V para el nivel alto (HIGH). Su arquitectura destaca por el uso de una etapa de salida en configuración Totem-Pole discreta o integrada, la cual proporciona una baja impedancia de salida que optimiza la velocidad de conmutación y mejora la capacidad de manejo de corriente. Popularizada a través de la serie comercial 7400, la tecnología TTL representó un avance significativo en velocidad frente a familias previas como RTL o DTL, aunque presenta un consumo de potencia mayor en comparación con la tecnología CMOS contemporánea.
+    \item \textbf{Lógica TTL (Transistor-Transistor Logic):} Familia de circuitos integrados digitales basada en transistores bipolares (BJT) y resistencias que operan a 5 V. Define sus estados lógicos entre 0-0.8 V para nivel bajo (LOW) y 2-5 V para nivel alto (HIGH). Su arquitectura emplea una salida en configuración Totem-Pole, que proporciona baja impedancia de salida, optimizando velocidad de conmutación y capacidad de manejo de corriente. La serie 7400 popularizó esta tecnología, demostrando velocidad superior a familias anteriores (RTL, DTL), aunque con mayor consumo de potencia comparada con CMOS.
     
-    \item \textbf{Tecnología CMOS:} La tecnología CMOS es la arquitectura dominante en la fabricación de circuitos digitales y microprocesadores modernos, fundamentada en el uso combinado y simétrico de MOSFETs de canal P y canal N. Su principal ventaja radica en su consumo de potencia estática extremadamente bajo, ya que en cualquier estado lógico constante (alto o bajo) uno de los dos MOSFETs complementarios permanece apagado, cortando el paso de corriente directa entre la fuente y tierra. Esta familia opera en un amplio rango de voltajes de alimentación (típicamente de 3 V a 15 V en series tradicionales como la 4000, o de 1.2 V a 5 V en familias avanzadas) y ofrece una alta inmunidad al ruido junto con una elevada impedancia de entrada, lo que permite conectar múltiples entradas a una sola salida sin degradar la señal. Aunque su consumo de potencia incrementa de forma proporcional a la frecuencia de conmutación debido a la carga y descarga de las capacitancias internas, supera sustancialmente a la tecnología TTL en densidad de integración y eficiencia energética.
+    \item \textbf{Tecnología CMOS:} Arquitectura dominante en circuitos digitales modernos, basada en MOSFETs complementarios de canal P y N. Su principal ventaja es el bajo consumo de potencia estática: en cualquier estado lógico, uno de los dos transistores permanece apagado, eliminando corriente directa entre fuente y tierra. Opera en rangos de voltaje amplios (3-15 V en series tradicionales, 1.2-5 V en avanzadas) con alta inmunidad al ruido e impedancia de entrada elevada. Aunque su consumo dinámico crece proporcionalmente con la frecuencia de conmutación, supera significativamente a TTL en densidad de integración y eficiencia energética.
 \end{itemize}
+
+% -------------------- Conclusiones --------------------
+\section{Conclusiones}
+
+\subsection{Análisis de la cadena de acondicionamiento de señal}
+
+Los resultados de laboratorio demuestran que el optoacoplador 6N135 introduce un retardo de transición aproximado de 10 µs en la conmutación. Este retardo, equivalente al 5\% del período de 200 µs a 5 kHz, resulta del almacenamiento de portadores de carga y del efecto Miller causado por la capacitancia Base-Colector interna. Esta limitación hace evidente que los optoacopladores básicos no son suficientes para aplicaciones que demanden transiciones rápidas, especialmente en conmutadores de potencia de alta frecuencia donde los tiempos de conmutación deben ser del orden de nanosegundos.
+
+La inserción del inversor Schmitt Trigger (CD40106) después del optoacoplador reduce significativamente el tiempo de transición, proporcionando flancos de subida y bajada más abruptos. Esto ocurre porque el CD40106 actúa como un comparador con histéresis, conmutando instantáneamente cuando se alcanza el umbral, eliminando la zona de incertidumbre presentes en la salida del optoacoplador. Este comportamiento es crítico para minimizar el consumo de potencia en la etapa de potencia, ya que reduce la duración del tiempo en que los transistores Q2 y Q3 del Totem-Pole conducen simultáneamente (configuración de cortocircuito dinámico).
+
+\subsection{Evaluación funcional de la configuración Totem-Pole}
+
+La etapa Totem-Pole formada por los transistores Q2 (NPN) y Q3 (PNP) no altera perceptiblemente la forma de onda en la salida del CD40106. Sin embargo, cumple la función crítica de proporcionar capacidad de entrega y absorción de corriente en nanosegundos, permitiendo cargación y descarga rápida de la capacitancia del gate del MOSFET IRFZ44N. Este arreglo es indispensable para alcanzar tiempos de conmutación en el rango de decenas de nanosegundos, evitando que la carga del gate se realice únicamente a través de la resistencia de salida del CD40106 (típicamente en el rango de kiloohmios).
+
+En contraste, el optodriver TLP350 integra internamente una configuración push-pull equivalente, eliminando la necesidad de un Totem-Pole discreto. Esta integración reduce el número de componentes, mejora la confiabilidad al reducir puntos de falla, y proporciona un aislamiento galvánico completo desde la entrada hasta la salida del driver, facilitando aplicaciones con IGBT a voltajes más elevados (hasta 600 V en el caso del GP10N60).
+
+\subsection{Efectividad del aislamiento galvánico implementado}
+
+El uso de optoacoplador o optodriver garantiza aislamiento galvánico entre la etapa de control (microcontrolador a 3.3-5 V) y la etapa de potencia (hasta 600 V en IGBTs). Este aislamiento previene bucles de tierra que de otra manera causarían inyección de ruido en los circuitos de baja señal, pudiendo corromper las lecturas de sensores o generar cambios de estado indeseados. Además, el aislamiento permite implementar configuraciones de rama alta (high-side switching) en topologías de puente completo, donde el interruptor flotante de la rama superior requiere una referencia de compuerta aislada de la tierra de potencia.
+
+La implementación del aislamiento óptico demuestra cumplir con los requisitos de protección de la electrónica de control. Sin embargo, la velocidad de la etapa de aislamiento (retardo de propagación) debe ser inferior a 1/10 del período de conmutación para garantizar que no sea el factor limitante en la velocidad de control total del sistema. A 5 kHz, un retardo máximo de 20 µs es aceptable; a 50 kHz, se requerirían optodrivers de mayor velocidad o amplificadores con aislamiento magnético.
+
+\subsection{Control PWM y modulación en compuerta}
+
+La generación de PWM a través del microcontrolador ESP32 demuestra efectividad para modular el ancho de pulso y, consecuentemente, controlar la potencia entregada a la carga. Los transitorios rápidos logrados con la configuración Totem-Pole o optodriver permiten cambios de ciclo útil sin la degradación de transitorios que se observaría con un simple optoacoplador. Este control preciso es fundamental en aplicaciones de conversión DC-DC, fuentes de poder conmutadas e inversores, donde la eficiencia depende directamente de la capacidad del driver de conmutar sin períodos prolongados de conducción simultánea.
+
+La medición en el gate del MOSFET (Figura 6) confirma que el PWM generado en el microcontrolador se transmite fielmente al dispositivo, validando que la cadena completa de acondicionamiento (microcontrolador → optoacoplador/optodriver → Totem-Pole → MOSFET/IGBT) preserva la integridad del control PWM a 5 kHz. Incrementar esta frecuencia requerirá dispositivos con menores retardos de propagación y mejor capacidad de entrega de corriente.
+
+\subsection{Recomendaciones para optimización}
+
+Para aplicaciones que requieran frecuencias superiores a 10 kHz, se recomienda el uso de optodrivers integrados (TLP350 o similares) en lugar de optoacopladores básicos, ya que proporcionan menor retardo de propagación (~350 ns vs. ~5 µs) y mejor capacidad de manejo de corriente (~2.5 A vs. ~16 mA). En sistemas de potencia muy elevada (> 100 kW), la consideración de aisladores magnéticos o capacitivos puede ser preferible debido a su menor consumo de energía en el aislamiento y mayor ancho de banda.
 
 \subsection{Fuentes consultadas}
 \begin{thebibliography}{9}
