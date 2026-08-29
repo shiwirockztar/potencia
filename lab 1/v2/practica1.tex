@@ -1,0 +1,369 @@
+\documentclass[12pt]{article}
+
+% -------------------- Idioma y codificación --------------------
+\usepackage[spanish]{babel}
+\addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+% -------------------- Formato de página --------------------
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{setspace}
+\setstretch{1.15}
+
+% -------------------- Colores --------------------
+\usepackage{xcolor}
+\definecolor{tituloazul}{RGB}{31,100,160}
+\definecolor{barraazul}{RGB}{210,230,250}
+
+% -------------------- Links clickeables --------------------
+\usepackage[
+colorlinks=true,
+linkcolor=tituloazul,
+citecolor=tituloazul,
+urlcolor=tituloazul
+]{hyperref}
+
+% -------------------- Estilo de secciones --------------------
+\usepackage{titlesec}
+\titleformat{\section}
+{\color{tituloazul}\large\bfseries}
+{\thesection}{1em}{}
+\titleformat{\subsection}
+{\color{tituloazul}\normalsize\bfseries}
+{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+{\color{tituloazul}\normalsize\bfseries}
+{\thesubsubsection}{1em}{}
+
+% -------------------- Encabezados automáticos --------------------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+
+\fancyhf{}
+\fancyhead[L]{\textcolor{tituloazul}{Electrónica de Potencia}}
+\fancyhead[R]{\textcolor{tituloazul}{Práctica 1}}
+\fancyfoot[C]{\thepage}
+
+% -------------------- Figuras --------------------
+\usepackage{graphicx}
+\graphicspath{{figuras/}}
+
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{listings}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    columns=fullflexible,
+    breaklines=true,
+    frame=single,
+    showstringspaces=false,
+    captionpos=b
+}
+
+% -------------------- Matemáticas --------------------
+\usepackage{amsmath}
+\usepackage[spanish,capitalize,nameinlink]{cleveref}
+\crefname{figure}{figura}{figuras}
+\Crefname{figure}{Figura}{Figuras}
+\crefname{equation}{ecuación}{ecuaciones}
+\Crefname{equation}{Ecuación}{Ecuaciones}
+\crefname{table}{tabla}{tablas}
+\Crefname{table}{Tabla}{Tablas}
+
+\usepackage{siunitx}
+
+\sisetup{
+per-mode=symbol,
+detect-all
+}
+
+% -------------------- Tablas profesionales --------------------
+\usepackage{booktabs}
+%\usepackage{tabularx}
+
+% -------------------- Referencias IEEE --------------------
+\usepackage{cite}
+
+% -------------------- Grafica circuitos --------------------
+\usepackage[spanish]{babel}
+\usepackage[siunitx]{circuitikz}
+\usetikzlibrary{babel} % Crucial para evitar conflictos con el idioma español
+\setlength{\headheight}{15pt} % Corrige el warning de fancyhdr
+\usepackage{latexsym} % para el símbolo de polaridad de la batería
+
+\newcommand{\estudiantes}{Jose Leonardo Perez Poveda, Sergio Hoyos Mejía,Alberto Mario Salazar Callejas}
+% -------------------- Documento --------------------
+\begin{document}
+
+
+% -------------------- Título --------------------
+\begin{center}
+    {\Huge \textcolor{tituloazul}{\textbf{Práctica 1}\\ Interruptores de Electrónica de Potencia y Circuitos de Disparo. Parte 1}}
+    \vspace{0.6cm}
+
+    {\textbf{\estudiantes}}
+    \vspace{0.5cm}
+
+    \textit{Ingeniería Electrónica}\\
+    \textit{Universidad de Antioquia}\\
+    \textit{Medellín-Colombia}
+\end{center}
+
+\vspace{0.5cm}
+
+% -------------------- Resumen --------------------
+\noindent\textcolor{tituloazul}{\textbf{Resumen:}} Esta práctica se enfoca en la caracterización y control de interruptores de estado sólido básicos en electrónica de potencia (MOSFET e IGBT). Se analizará la interacción entre señales de control de baja potencia generadas por un microcontrolador y las etapas de conmutación, mediante la implementación física de circuitos de disparo (Gate Drivers) con aislamiento galvánico (optoacopladores y optodrivers). Se validará el funcionamiento de los controladores de compuerta  y la respuesta dinámica de los interruptores mediante mediciones de laboratorio, comparando los tiempos de conmutación, caídas de tensión y el comportamiento de los dispositivos en condiciones reales de operación.
+
+
+% -------------------- Objetivos --------------------
+\section{Objetivo General}
+Implementar circuitos de disparo para dispositivos MOSFET e IGBT, operando como interruptores, controlando la potencia suministrada a cargas eléctricas, mediante un microcontrolador.
+
+\section{Objetivos Específicos}
+    \begin{itemize}
+        \item Analizar el funcionamiento de los dispositivos MOSFET e IGBT variando sus señales de conmutación e identificando sus diferencias en aplicaciones de electrónica de potencia.
+        \item Implementar aislamiento galvánico entre las etapas de control y potencia mediante el uso de optoacopladores, como medida de protección, separando el control de la etapa de potencia.
+        \item Controlar la potencia suministrada a las cargas eléctricas a través de la modulación por ancho de pulso (PWM).
+    \end{itemize}
+
+\newpage % salto de pagina
+
+% -------------------- Preinforme --------------------
+\section{Preinforme}
+En esta sección se presenta el avance desarrollado hasta el momento, siguiendo la pauta solicitada para el preinforme.
+
+\subsection{Consulta}
+
+\subsubsection{Optoacoplador 6N135}
+El 6N135 es un optoacoplador de un canal para alta velocidad. Internamente usa un LED de entrada y una etapa de salida con transistor NPN de colector abierto, lo que permite aislamiento galvánico entre la etapa de control y la etapa de potencia. Su principio de funcionamiento consiste en convertir la señal eléctrica de entrada en luz y luego volverla a convertir en señal eléctrica en la salida aislada.
+
+Parámetros destacados reportados en la consulta:
+\begin{itemize}
+    \item Corriente directa del LED: \SI{25}{mA}.
+    \item Corriente pico directa del LED: \SI{50}{mA}.
+    \item Voltaje inverso del LED: \SI{5}{V}.
+    \item Corriente promedio de salida: \SI{8}{mA}.
+    \item Corriente pico de salida: \SI{16}{mA}.
+    \item Rango de voltaje de alimentación/salida: \SIrange{-0.5}{15}{V}.
+    \item Voltaje de aislamiento: \SIrange{2500}{5000}{V_{rms}}.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{images/6N135.png}
+    \caption{Esquema de pines de salida de Optoacoplador 6N135}
+\end{figure}
+
+\subsubsection{Optodriver TLP350}
+El TLP350 es un optoacoplador con etapa de potencia para manejo de compuerta en MOSFET e IGBT. A diferencia del 6N135, su salida está diseñada para entregar y absorber corriente de compuerta, facilitando encendido y apagado rápidos del interruptor.
+
+Parámetros destacados reportados en la consulta:
+\begin{itemize}
+    \item Corriente de entrada del LED: \SI{20}{mA}.
+    \item Corriente pico de entrada: \SI{1}{A}.
+    \item Voltaje inverso de entrada: \SI{5}{V}.
+    \item Corriente pico de salida en alto: \SI{2.5}{A}.
+    \item Corriente pico de salida en bajo: \SI{-2.5}{A}.
+    \item Tensión máxima de alimentación: \SI{35}{V}.
+    \item Voltaje de aislamiento: \SI{3750}{V_{rms}}.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{images/TLP350.png}
+    \caption{Esquema de pines de salida de Optodriver TLP350}
+\end{figure}
+
+\subsubsection{Circuito integrado CD40106}
+El CD40106 es un integrado CMOS con seis inversores Schmitt Trigger independientes. Se usa para invertir señales lógicas y mejorar su inmunidad al ruido, gracias al efecto de histéresis en los umbrales de conmutación.
+
+Parámetros destacados reportados en la consulta:
+\begin{itemize}
+    \item Rango de voltaje de entrada: \SIrange{-0.5}{18}{V}.
+    \item Corriente de entrada típica muy baja (orden de \si{\micro\ampere}).
+    \item Corriente de salida LOW: \SI{2.4}{mA}.
+    \item Corriente de salida HIGH: \SI{-2.4}{mA}.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{images/CD40106.jpg}
+    \caption{Esquema de pines de salida de CD40106}
+\end{figure}
+
+\subsubsection{MOSFET IRFZ44N e IGBT GP10N60}
+El IRFZ44N es un transistor de tipo NPN MOSFET utilizado para proyectos que tengan implementación con voltajes de hasta 50V, para que este entre en modo de interruptor se requiere suministrar de 10 a 12 voltios en la compuerta(GATE), la fuente(SOURCE) debe estar a tierra de potencia(POTGND) y el drenaje(DRAIN) se conecta a la carga que se le este colocando.
+\begin{itemize}
+    \item Voltaje Drain-source: 50V
+    \item corriente Drain en temperatura ambiente: 49A
+    \item corriente Drain en 100° C: 35A
+    \item Potencia maxima que disipa: 110W
+
+    
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{images/IRFZ44N.png}
+    \caption{Esquema de pines de salida IRFZ44N}
+\end{figure}
+
+El IGBT GP10N60 por su lado es util para hacer las inversiones de DC a AC y para implementaciones de alta potencia o incluso fuentes conmutadas ya que puede funcionar con voltajes de hasta 600V, para poner en estado de interruptor a este se necesita tener un voltaje de entre 10v a 15v entre Gate y emisor.
+
+\begin{itemize}
+    \item Voltaje Colector-Emisor: 600V
+    \item corriente Colector en temperatura ambiente: 20A
+    \item corriente Colector en 100° C: 10A
+    \item Potencia maxima que disipa: 139W
+
+    
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{images/P10N60.png}
+    \caption{Esquema de pines de salida IGBT P10N60}
+\end{figure}
+
+\subsection{Código PWM}
+\begin{lstlisting}[language=C++,caption={Código PWM para ESP32 con control serial de frecuencia y ciclo útil}]
+#include <Arduino.h>
+
+// Configuración del canal PWM (LEDC de ESP32)
+const int PWM_PIN    = 15;   // GPIO de salida
+const int PWM_CHAN   = 0;    // Canal LEDC (0-15)
+const int PWM_RES   = 12;   // Resolución en bits (4096 niveles)
+
+int   freq = 1000;   // Hz
+float duty = 50.0;   // %
+
+void applyPWM() {
+    ledcSetup(PWM_CHAN, freq, PWM_RES);
+    ledcAttachPin(PWM_PIN, PWM_CHAN);
+    uint32_t maxVal = (1 << PWM_RES) - 1;
+    uint32_t dutyVal = (uint32_t)((duty / 100.0f) * maxVal);
+    ledcWrite(PWM_CHAN, dutyVal);
+}
+
+void setup() {
+    Serial.begin(115200);
+    applyPWM();
+    Serial.println("PWM Control Serial - ESP32");
+    Serial.println("F=<frecuencia Hz>   (60 a 40000)");
+    Serial.println("D=<duty %>          (0 a 100)");
+    Serial.println("S                   (estado)");
+}
+
+void loop() {
+    if (Serial.available()) {
+        String cmd = Serial.readStringUntil('\n');
+        cmd.trim();
+        String cmdUp = cmd;
+        cmdUp.toUpperCase();
+
+        if (cmdUp.startsWith("F=")) {
+            int nuevaFreq = cmd.substring(2).toInt();
+            if (nuevaFreq >= 60 && nuevaFreq <= 40000) {
+                freq = nuevaFreq;
+                applyPWM();
+                Serial.print("Frecuencia: "); Serial.print(freq); Serial.println(" Hz");
+            } else {
+                Serial.println("Error: rango 60-40000 Hz");
+            }
+
+        } else if (cmdUp.startsWith("D=")) {
+            float nuevoDuty = cmd.substring(2).toFloat();
+            if (nuevoDuty >= 0 && nuevoDuty <= 100) {
+                duty = nuevoDuty;
+                applyPWM();
+                Serial.print("Duty: "); Serial.print(duty); Serial.println(" %");
+            } else {
+                Serial.println("Error: rango 0-100 %");
+            }
+
+        } else if (cmdUp == "S") {
+            Serial.print("Frecuencia: "); Serial.print(freq); Serial.println(" Hz");
+            Serial.print("Duty: "); Serial.print(duty); Serial.println(" %");
+
+        } else {
+            Serial.println("Comando no reconocido");
+        }
+    }
+}
+\end{lstlisting}
+
+\subsection{Simulaciones}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/Esquema sim CD40106.png}
+    \caption{Esquema de simulación de disparo de MOSFET}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/Señal cd40106 en colector 2n2222.png}
+    \caption{Señal de operacion en colector de 2N2222 de seccion de control}
+\end{figure}
+
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/Señal cd40106 en carga.png}
+    \caption{Señal de operacion en Carga}
+\end{figure}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/Esquema sim CD40106.png}
+    \caption{Esquema de simulación de disparo de MOSFET}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/Señal tlp350 en colector 2n2222.png}
+    \caption{Señal de operacion en colector de 2N2222 de seccion de control}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/Señal tlp350 en carga.png}
+    \caption{Señal de operacion en Carga}
+\end{figure}
+
+\subsection{Fuentes consultadas}
+\begin{thebibliography}{9}
+
+\bibitem{sciencedirect_led}
+ScienceDirect, ``Chapter 3 AlGaAs Red Light-Emitting Diodes,'' accedido el 5 de agosto de 2026. [Online]. Disponible en: \url{https://www.sciencedirect.com/science/chapter/bookseries/abs/pii/S0080878408624047}
+
+\bibitem{vishay_6n135}
+Vishay Siliconix, ``6N135 Datasheet,'' accedido el 5 de agosto de 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/1460377/VISHAY/6N135.html}
+
+\bibitem{toshiba_tlp350}
+Toshiba, ``TLP350 Datasheet,'' accedido el 5 de agosto de 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/122360/TOSHIBA/TLP350.html}
+
+\bibitem{ti_cd40106}
+Texas Instruments, ``CD40106 Datasheet,'' accedido el 5 de agosto de 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/26839/TI/CD40106.html}
+
+\bibitem{philips_irfz44n}
+Philips, ``IRFZ44N Datasheet,'' accedido el 9 de agosto de 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/17807/PHILIPS/IRFZ44N.html}
+
+\bibitem{fairchild_fgp10n60}
+Fairchild Semiconductor, ``FGP10N60UNDF Datasheet,'' accedido el 9 de agosto de 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/466293/FAIRCHILD/FGP10N60UNDF.html}
+
+\end{thebibliography}
+
+% -------------------- Bibliografía --------------------
+\bibliographystyle{IEEEtran}
+\bibliography{bibliografia}
+
+
+
+\end{document}
