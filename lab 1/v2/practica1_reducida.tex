@@ -1,0 +1,247 @@
+\documentclass[12pt]{article}
+
+% -------------------- Idioma y codificación --------------------
+\usepackage[spanish]{babel}
+\addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+% -------------------- Formato de página --------------------
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{setspace}
+\setstretch{1.15}
+
+% -------------------- Colores --------------------
+\usepackage{xcolor}
+\definecolor{tituloazul}{RGB}{31,100,160}
+\definecolor{barraazul}{RGB}{210,230,250}
+
+% -------------------- Links clickeables --------------------
+\usepackage[
+colorlinks=true,
+linkcolor=tituloazul,
+citecolor=tituloazul,
+urlcolor=tituloazul
+]{hyperref}
+
+% -------------------- Estilo de secciones --------------------
+\usepackage{titlesec}
+\titleformat{\section}
+{\color{tituloazul}\large\bfseries}
+{\thesection}{1em}{}
+\titleformat{\subsection}
+{\color{tituloazul}\normalsize\bfseries}
+{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+{\color{tituloazul}\normalsize\bfseries}
+{\thesubsubsection}{1em}{}
+
+% -------------------- Encabezados automáticos --------------------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+
+\fancyhf{}
+\fancyhead[L]{\textcolor{tituloazul}{Electrónica de Potencia}}
+\fancyhead[R]{\textcolor{tituloazul}{Práctica 1}}
+\fancyfoot[C]{\thepage}
+
+% -------------------- Figuras --------------------
+\usepackage{graphicx}
+\graphicspath{{figuras/}}
+
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{listings}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    columns=fullflexible,
+    breaklines=true,
+    frame=single,
+    showstringspaces=false,
+    captionpos=b
+}
+
+% -------------------- Matemáticas --------------------
+\usepackage{amsmath}
+\usepackage[spanish,capitalize,nameinlink]{cleveref}
+\crefname{figure}{figura}{figuras}
+\Crefname{figure}{Figura}{Figuras}
+\crefname{equation}{ecuación}{ecuaciones}
+\Crefname{equation}{Ecuación}{Ecuaciones}
+\crefname{table}{tabla}{tablas}
+\Crefname{table}{Tabla}{Tablas}
+
+\usepackage{siunitx}
+
+\sisetup{
+per-mode=symbol,
+detect-all
+}
+
+% -------------------- Tablas profesionales --------------------
+\usepackage{booktabs}
+
+% -------------------- Referencias IEEE --------------------
+\usepackage{cite}
+
+% -------------------- Grafica circuitos --------------------
+\usepackage[spanish]{babel}
+\usepackage[siunitx]{circuitikz}
+\usetikzlibrary{babel}
+\setlength{\headheight}{15pt}
+\usepackage{latexsym}
+
+\newcommand{\estudiantes}{Jose Leonardo Perez Poveda, Sergio Hoyos Mejía, Alberto Mario Salazar Callejas}
+
+% -------------------- Documento --------------------
+\begin{document}
+
+% -------------------- Título --------------------
+\begin{center}
+    {\Huge \textcolor{tituloazul}{\textbf{Práctica 1}\\ Interruptores de Electrónica de Potencia y Circuitos de Disparo. Parte 1}}
+    \vspace{0.6cm}
+
+    {\textbf{\estudiantes}}
+    \vspace{0.5cm}
+
+    \textit{Ingeniería Electrónica}\\
+    \textit{Universidad de Antioquia}\\
+    \textit{Medellín-Colombia}
+\end{center}
+
+\vspace{0.5cm}
+
+% -------------------- Resumen --------------------
+\noindent\textcolor{tituloazul}{\textbf{Resumen:}} Esta práctica se enfoca en la caracterización y control de interruptores de estado sólido básicos en electrónica de potencia (MOSFET e IGBT). Se analizará la interacción entre señales de control de baja potencia generadas por un microcontrolador y las etapas de conmutación, mediante la implementación física de circuitos de disparo (Gate Drivers) con aislamiento galvánico (optoacopladores y optodrivers). Se validará el funcionamiento de los controladores de compuerta mediante mediciones de laboratorio, comparando los tiempos de conmutación, caídas de tensión y el comportamiento de los dispositivos en condiciones reales de operación.
+
+% -------------------- Objetivos --------------------
+\section{Objetivo General}
+Implementar circuitos de disparo para dispositivos MOSFET e IGBT, operando como interruptores, controlando la potencia suministrada a cargas eléctricas, mediante un microcontrolador.
+
+\section{Objetivos Específicos}
+    \begin{itemize}
+        \item Analizar el funcionamiento de los dispositivos MOSFET e IGBT variando sus señales de conmutación e identificando sus diferencias en aplicaciones de electrónica de potencia.
+        \item Implementar aislamiento galvánico entre las etapas de control y potencia mediante el uso de optoacopladores, como medida de protección, separando el control de la etapa de potencia.
+        \item Controlar la potencia suministrada a las cargas eléctricas a través de la modulación por ancho de pulso (PWM).
+    \end{itemize}
+
+\newpage
+
+% -------------------- Informe --------------------
+\section{Informe}
+
+\subsection{Optoacoplador y Mosfet}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/microcontrolador_salida.png}
+    \caption{Medida en la salida del microcontrolador.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/optoacoplador_salida.png}
+    \caption{Medida en la salida del optoacoplador.}
+\end{figure}
+
+A primera vista, ambas mediciones presentan la misma forma de onda. Sin embargo, un análisis detallado revela que la salida del optoacoplador presenta transitorios no instantáneos, con un retardo aproximado de 10 µs. Para este caso a 5 kHz (período de 200 µs), este retardo es significativo y debe considerarse en el diseño del circuito.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/transitorio_optoacoplador.png}
+    \caption{Transitorio en la salida del optoacoplador.}
+\end{figure}
+
+Este comportamiento se debe al almacenamiento de portadores de carga. Cuando el LED interno se enciende, satura la base del fototransistor con electrones y huecos. Al apagarse el LED, estos portadores no desaparecen instantáneamente, sino que requieren un tiempo para recombinarse, manteniendo el transistor encendido durante este período. Además, interviene el efecto Miller, que hace referencia a la capacitancia Base-Colector presente en los transistores internos del optoacoplador.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/cd40106_salida.png}
+    \caption{Medida a la salida del CD40106.}
+\end{figure}
+
+El componente \textbf{CD40106} es un inversor Schmidt Trigger que funciona cambiando su estado lógico cuando se alcanza un umbral determinado, el cual depende de su polarización. Este componente es útil para eliminar el tiempo de transición que queda en la señal después del optoacoplador, reduciendo el consumo de potencia en el MOSFET, evitando errores de sincronización y ayudando a prevenir ruido.
+
+La \textbf{figura 5} muestra la mejora en la conmutación: una vez alcanzado el umbral durante el tiempo de transición, el CD40106 genera cambios lógicos más pronunciados e instantáneos.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/schmidt_trigger_comparacion.png}
+    \caption{Comparación de transitorios antes y después del Schmidt Trigger.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/pwm_gate_source.png}
+    \caption{PWM en el gate-source.}
+\end{figure}
+
+Comparando esta gráfica con la obtenida a la salida del CD40106, no se observa alteración significativa en la forma de onda. Esto ocurre porque el arreglo entre Q2 y Q3 no introduce cambios perceptibles en la señal.
+
+Esta configuración de transistores se conoce como \textbf{Totem-Pole} y funciona como un driver de corriente ultra rápido o búfer, diseñado específicamente para activar y desactivar conmutadores de potencia como el MOSFET IRFZ44N. El transistor Q2 (NPN) se activa para entregar un pico de corriente desde la fuente de alimentación (Vcc), cargando la compuerta del MOSFET en nanosegundos. Simultáneamente, Q3 (PNP) extrae la carga de la capacitancia del gate hacia tierra, permitiendo cambios de estado más rápidos y eficientes, acelerando el apagado del dispositivo.
+
+\subsection{Optodriver e IGBT}
+
+A diferencia del optoacoplador básico, el optodriver integra internamente una etapa de salida tipo push-pull que cumple la función del Totem-Pole. Esta característica lo hace ideal para controlar directamente compuertas de MOSFET e IGBT, ya que proporciona tanto aislamiento galvánico como capacidad de entrega/absorción de corriente, facilitando transiciones rápidas y confiables.
+
+\subsection{Preguntas del Informe}
+
+\begin{itemize}
+    \item \textbf{Aislamiento galvánico:} El aislamiento galvánico entre las etapas de control y potencia cumple tres funciones esenciales: proteger la electrónica de control contra sobrevoltajes destructivos, eliminar ruido electromagnético y bucles de tierra, y permitir el manejo de transistores en configuración flotante (rama alta).
+    
+    \item \textbf{Optoacoplador u Optodriver:} La función principal es proteger la electrónica de control (generalmente más costosa) de la etapa de potencia. Para lograrlo, se requieren puntos de referencia (tierras) completamente aislados, de modo que ambas etapas no se afecten mutuamente y se comuniquen únicamente a través de la señal óptica.
+    
+    \item \textbf{Lógica TTL:} Familia de circuitos integrados digitales que opera a 5 V con estados lógicos entre 0-0.8 V (LOW) y 2-5 V (HIGH). Emplea una salida en configuración Totem-Pole con baja impedancia de salida, optimizando velocidad de conmutación y manejo de corriente.
+    
+    \item \textbf{Tecnología CMOS:} Arquitectura dominante en circuitos digitales, basada en MOSFETs complementarios de canal P y N. Su ventaja principal es bajo consumo de potencia estática y opera en amplios rangos de voltaje con alta inmunidad al ruido.
+\end{itemize}
+
+\newpage
+
+% -------------------- Conclusiones --------------------
+\section{Conclusiones}
+
+\subsection{Análisis de la cadena de acondicionamiento}
+
+Los resultados de laboratorio demuestran que el optoacoplador 6N135 introduce un retardo de transición de aproximadamente 10 µs en la conmutación, equivalente al 5\% del período de 200 µs a 5 kHz. Este retardo resulta del almacenamiento de portadores de carga y del efecto Miller. La inserción del inversor Schmitt Trigger (CD40106) reduce significativamente el tiempo de transición, proporcionando flancos más abruptos y eliminando la zona de incertidumbre presentes en la salida del optoacoplador.
+
+\subsection{Evaluación funcional de Totem-Pole}
+
+La etapa Totem-Pole formada por Q2 (NPN) y Q3 (PNP) cumple la función crítica de proporcionar entrega y absorción de corriente en nanosegundos, permitiendo cargación rápida de la capacitancia del gate del MOSFET. Este arreglo es indispensable para alcanzar tiempos de conmutación en el rango de decenas de nanosegundos. El optodriver TLP350 integra internamente una configuración push-pull equivalente, reduciendo componentes y mejorando confiabilidad.
+
+\subsection{Efectividad del aislamiento galvánico}
+
+El uso de optoacoplador o optodriver garantiza aislamiento galvánico entre la etapa de control (3.3-5 V) y la de potencia (hasta 600 V en IGBTs). Esto previene bucles de tierra que causarían inyección de ruido en circuitos de baja señal y permite implementar configuraciones de rama alta. El retardo de propagación debe ser inferior a 1/10 del período de conmutación para no limitar la velocidad de control total del sistema.
+
+\subsection{Control PWM y modulación}
+
+La generación de PWM mediante el microcontrolador ESP32 demuestra efectividad para controlar la potencia entregada. Los transitorios rápidos logrados con Totem-Pole o optodriver permiten cambios de ciclo útil sin degradación. La medición en el gate del MOSFET confirma que el PWM se transmite fielmente al dispositivo, validando la integridad de la cadena completa de acondicionamiento.
+
+\subsection{Recomendaciones}
+
+Para aplicaciones que requieran frecuencias superiores a 10 kHz, se recomienda usar optodrivers integrados (TLP350) con menor retardo de propagación (~350 ns vs. ~5 µs) y mejor capacidad de manejo de corriente (~2.5 A vs. ~16 mA). En sistemas de potencia muy elevada (> 100 kW), aisladores magnéticos o capacitivos pueden ser preferibles.
+
+% -------------------- Referencias --------------------
+\begin{thebibliography}{9}
+
+\bibitem{vishay_6n135}
+Vishay Siliconix, ``6N135 Datasheet,'' 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/1460377/VISHAY/6N135.html}
+
+\bibitem{toshiba_tlp350}
+Toshiba, ``TLP350 Datasheet,'' 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/122360/TOSHIBA/TLP350.html}
+
+\bibitem{ti_cd40106}
+Texas Instruments, ``CD40106 Datasheet,'' 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/26839/TI/CD40106.html}
+
+\bibitem{philips_irfz44n}
+Philips, ``IRFZ44N Datasheet,'' 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/17807/PHILIPS/IRFZ44N.html}
+
+\bibitem{fairchild_fgp10n60}
+Fairchild Semiconductor, ``FGP10N60UNDF Datasheet,'' 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/466293/FAIRCHILD/FGP10N60UNDF.html}
+
+\end{thebibliography}
+
+\end{document}
