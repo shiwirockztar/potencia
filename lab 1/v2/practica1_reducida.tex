@@ -34,8 +34,10 @@ urlcolor=tituloazul
 {\color{tituloazul}\normalsize\bfseries}
 {\thesubsection}{1em}{}
 \titleformat{\subsubsection}
-{\color{tituloazul}\normalsize\bfseries}
-{\thesubsubsection}{1em}{}
+{\color{tituloazul}\small\bfseries}
+{\thesubsubsection}{0.5em}{}
+\titlespacing{\section}{0pt}{12pt}{6pt}
+\titlespacing{\subsection}{0pt}{8pt}{4pt}
 
 % -------------------- Encabezados automáticos --------------------
 \usepackage{fancyhdr}
@@ -54,6 +56,8 @@ urlcolor=tituloazul
 \usepackage{subcaption}
 \usepackage{float}
 \usepackage{listings}
+
+\captionsetup{skip=8pt}
 
 \lstset{
     basicstyle=\ttfamily\small,
@@ -83,6 +87,8 @@ detect-all
 
 % -------------------- Tablas profesionales --------------------
 \usepackage{booktabs}
+\usepackage{enumitem}
+\setlist{topsep=8pt, itemsep=5pt, parsep=3pt}
 
 % -------------------- Referencias IEEE --------------------
 \usepackage{cite}
@@ -100,35 +106,20 @@ detect-all
 \begin{document}
 
 % -------------------- Título --------------------
+\vspace*{-1cm}
 \begin{center}
     {\Huge \textcolor{tituloazul}{\textbf{Práctica 1}\\ Interruptores de Electrónica de Potencia y Circuitos de Disparo. Parte 1}}
-    \vspace{0.6cm}
+    \vspace{0.2cm}
 
     {\textbf{\estudiantes}}
-    \vspace{0.5cm}
+    \vspace{0.2cm}
 
     \textit{Ingeniería Electrónica}\\
     \textit{Universidad de Antioquia}\\
     \textit{Medellín-Colombia}
 \end{center}
 
-\vspace{0.5cm}
-
-% -------------------- Resumen --------------------
-\noindent\textcolor{tituloazul}{\textbf{Resumen:}} Esta práctica se enfoca en la caracterización y control de interruptores de estado sólido básicos en electrónica de potencia (MOSFET e IGBT). Se analizará la interacción entre señales de control de baja potencia generadas por un microcontrolador y las etapas de conmutación, mediante la implementación física de circuitos de disparo (Gate Drivers) con aislamiento galvánico (optoacopladores y optodrivers). Se validará el funcionamiento de los controladores de compuerta mediante mediciones de laboratorio, comparando los tiempos de conmutación, caídas de tensión y el comportamiento de los dispositivos en condiciones reales de operación.
-
-% -------------------- Objetivos --------------------
-\section{Objetivo General}
-Implementar circuitos de disparo para dispositivos MOSFET e IGBT, operando como interruptores, controlando la potencia suministrada a cargas eléctricas, mediante un microcontrolador.
-
-\section{Objetivos Específicos}
-    \begin{itemize}
-        \item Analizar el funcionamiento de los dispositivos MOSFET e IGBT variando sus señales de conmutación e identificando sus diferencias en aplicaciones de electrónica de potencia.
-        \item Implementar aislamiento galvánico entre las etapas de control y potencia mediante el uso de optoacopladores, como medida de protección, separando el control de la etapa de potencia.
-        \item Controlar la potencia suministrada a las cargas eléctricas a través de la modulación por ancho de pulso (PWM).
-    \end{itemize}
-
-\newpage
+\vspace{0.3cm}
 
 % -------------------- Informe --------------------
 \section{Informe}
@@ -137,13 +128,13 @@ Implementar circuitos de disparo para dispositivos MOSFET e IGBT, operando como 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{images/microcontrolador_salida.png}
+    \includegraphics[width=0.48\textwidth]{images/microcontrolador_salida.png}
     \caption{Medida en la salida del microcontrolador.}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{images/optoacoplador_salida.png}
+    \includegraphics[width=0.48\textwidth]{images/optoacoplador_salida.png}
     \caption{Medida en la salida del optoacoplador.}
 \end{figure}
 
@@ -151,7 +142,7 @@ A primera vista, ambas mediciones presentan la misma forma de onda. Sin embargo,
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{images/transitorio_optoacoplador.png}
+    \includegraphics[width=0.48\textwidth]{images/transitorio_optoacoplador.png}
     \caption{Transitorio en la salida del optoacoplador.}
 \end{figure}
 
@@ -159,7 +150,7 @@ Este comportamiento se debe al almacenamiento de portadores de carga. Cuando el 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{images/cd40106_salida.png}
+    \includegraphics[width=0.48\textwidth]{images/cd40106_salida.png}
     \caption{Medida a la salida del CD40106.}
 \end{figure}
 
@@ -169,13 +160,13 @@ La \textbf{figura 5} muestra la mejora en la conmutación: una vez alcanzado el 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{images/schmidt_trigger_comparacion.png}
+    \includegraphics[width=0.48\textwidth]{images/schmidt_trigger_comparacion.png}
     \caption{Comparación de transitorios antes y después del Schmidt Trigger.}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{images/pwm_gate_source.png}
+    \includegraphics[width=0.48\textwidth]{images/pwm_gate_source.png}
     \caption{PWM en el gate-source.}
 \end{figure}
 
@@ -199,9 +190,6 @@ A diferencia del optoacoplador básico, el optodriver integra internamente una e
     \item \textbf{Tecnología CMOS:} Arquitectura dominante en circuitos digitales, basada en MOSFETs complementarios de canal P y N. Su ventaja principal es bajo consumo de potencia estática y opera en amplios rangos de voltaje con alta inmunidad al ruido.
 \end{itemize}
 
-\newpage
-
-% -------------------- Conclusiones --------------------
 \section{Conclusiones}
 
 \subsection{Análisis de la cadena de acondicionamiento}
@@ -223,25 +211,5 @@ La generación de PWM mediante el microcontrolador ESP32 demuestra efectividad p
 \subsection{Recomendaciones}
 
 Para aplicaciones que requieran frecuencias superiores a 10 kHz, se recomienda usar optodrivers integrados (TLP350) con menor retardo de propagación (~350 ns vs. ~5 µs) y mejor capacidad de manejo de corriente (~2.5 A vs. ~16 mA). En sistemas de potencia muy elevada (> 100 kW), aisladores magnéticos o capacitivos pueden ser preferibles.
-
-% -------------------- Referencias --------------------
-\begin{thebibliography}{9}
-
-\bibitem{vishay_6n135}
-Vishay Siliconix, ``6N135 Datasheet,'' 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/1460377/VISHAY/6N135.html}
-
-\bibitem{toshiba_tlp350}
-Toshiba, ``TLP350 Datasheet,'' 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/122360/TOSHIBA/TLP350.html}
-
-\bibitem{ti_cd40106}
-Texas Instruments, ``CD40106 Datasheet,'' 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/26839/TI/CD40106.html}
-
-\bibitem{philips_irfz44n}
-Philips, ``IRFZ44N Datasheet,'' 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/17807/PHILIPS/IRFZ44N.html}
-
-\bibitem{fairchild_fgp10n60}
-Fairchild Semiconductor, ``FGP10N60UNDF Datasheet,'' 2026. [Online]. Disponible en: \url{https://www.alldatasheet.com/datasheet-pdf/view/466293/FAIRCHILD/FGP10N60UNDF.html}
-
-\end{thebibliography}
 
 \end{document}
