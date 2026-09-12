@@ -1,0 +1,1064 @@
+\documentclass[12pt]{article}
+
+% -------------------- Idioma y codificación --------------------
+\usepackage[spanish]{babel}
+\addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+% -------------------- Formato de página --------------------
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{setspace}
+\setstretch{1.15}
+
+% -------------------- Colores --------------------
+\usepackage{xcolor}
+\definecolor{tituloazul}{RGB}{31,100,160}
+\definecolor{barraazul}{RGB}{210,230,250}
+
+% -------------------- Links clickeables --------------------
+\usepackage[
+    colorlinks=true,
+    linkcolor=tituloazul,
+    citecolor=tituloazul,
+    urlcolor=tituloazul
+]{hyperref}
+
+% -------------------- Estilo de secciones --------------------
+\usepackage{titlesec}
+
+\titleformat{\section}
+{\color{tituloazul}\large\bfseries}
+{\thesection}{1em}{}
+
+\titleformat{\subsection}
+{\color{tituloazul}\normalsize\bfseries}
+{\thesubsection}{1em}{}
+
+\titleformat{\subsubsection}
+{\color{tituloazul}\normalsize\bfseries}
+{\thesubsubsection}{1em}{}
+
+% -------------------- Encabezados automáticos --------------------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+
+\fancyhf{}
+\fancyhead[L]{\textcolor{tituloazul}{Electrónica de Potencia}}
+\fancyhead[R]{\textcolor{tituloazul}{Práctica 2}}
+\fancyfoot[C]{\thepage}
+
+\setlength{\headheight}{15pt}
+
+% -------------------- Figuras --------------------
+\usepackage{graphicx}
+\graphicspath{{figuras/}}
+
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+
+% -------------------- Matemáticas --------------------
+\usepackage{amsmath}
+
+\usepackage[
+    spanish,
+    capitalize,
+    nameinlink
+]{cleveref}
+
+\crefname{figure}{figura}{figuras}
+\Crefname{figure}{Figura}{Figuras}
+
+\crefname{equation}{ecuación}{ecuaciones}
+\Crefname{equation}{Ecuación}{Ecuaciones}
+
+\crefname{table}{tabla}{tablas}
+\Crefname{table}{Tabla}{Tablas}
+
+% -------------------- Unidades --------------------
+\usepackage{siunitx}
+
+\sisetup{
+    per-mode=symbol,
+    detect-all
+}
+
+% -------------------- Tablas profesionales --------------------
+\usepackage{booktabs}
+
+% -------------------- Referencias IEEE --------------------
+\usepackage{cite}
+
+% -------------------- Circuitos --------------------
+\usepackage[siunitx]{circuitikz}
+\usetikzlibrary{babel}
+
+% -------------------- Símbolos --------------------
+\usepackage{latexsym}
+
+% -------------------- Autores --------------------
+\newcommand{\estudiantes}{Jose Leonardo Perez Poveda, Sergio Hoyos Mejía, Alberto Salazar}
+% ============================================================
+%                         DOCUMENTO
+% ============================================================
+
+\begin{document}
+
+% -------------------- Título --------------------
+\begin{center}
+
+    {\Huge
+    \textcolor{tituloazul}{
+    \textbf{Práctica 2}\\
+    Interruptores de Electrónica de Potencia y
+    Circuitos de Disparo. Parte 2
+    }}
+
+    \vspace{0.6cm}
+
+    {\textbf{\estudiantes}}
+
+    \vspace{0.5cm}
+
+    \textit{Ingeniería Electrónica}\\
+    \textit{Universidad de Antioquia}\\
+    \textit{Medellín-Colombia}
+
+\end{center}
+
+\vspace{0.5cm}
+
+% -------------------- Resumen --------------------
+\noindent
+\textcolor{tituloazul}{\textbf{Resumen:}}
+Esta práctica implementa un sistema de control por fase para la regulación de
+potencia en una carga de corriente alterna (AC). El sistema emplea un
+Rectificador Controlado de Silicio (SCR) BT151-500R como elemento principal
+de conmutación, acompañado de un puente rectificador KBL04 que permite
+controlar ambos semiciclos de la tensión de red mediante un único SCR.
+
+La sincronización del sistema se obtiene mediante una etapa de detección de
+cruce por cero, conformada por un transformador, un puente rectificador y un
+optoacoplador RH111. La señal aislada obtenida es utilizada por el
+microcontrolador para determinar el instante de disparo del SCR en función del
+ángulo de fase $\alpha$. Posteriormente, el pulso de control activa un transistor
+2N2222 y un optotriac MOC3020, proporcionando aislamiento galvánico entre la
+etapa de control y la etapa de potencia.
+
+Finalmente, se emplea un optoacoplador lineal IL300 junto con amplificadores
+operacionales LM358 para realizar la medición aislada de la tensión sobre la
+carga. De esta manera, se analiza experimentalmente la relación entre el
+ángulo de disparo, el intervalo de conducción del SCR y la potencia entregada
+a la carga.
+
+% -------------------- Objetivo General --------------------
+\section{Objetivo General}
+
+Implementar un sistema de control de potencia por fase gestionado por un
+microcontrolador y sincronizado mediante detección de cruce por cero,
+utilizando un SCR para la regulación de energía en una carga AC.
+
+% -------------------- Objetivos Específicos --------------------
+\section{Objetivos Específicos}
+
+\begin{itemize}
+    \item Validar la etapa de detección de cruce por cero, garantizando la
+    correcta sincronización de los pulsos del microcontrolador con la
+    frecuencia de la red eléctrica.
+
+    \item Establecer doble aislamiento galvánico mediante un transformador de
+    medida y un optotriac, protegiendo la etapa de control frente a la red de
+    potencia.
+
+    \item Evaluar el comportamiento del SCR como interruptor mediante el
+    análisis de la potencia entregada a la carga en función del ángulo de
+    disparo $\alpha$.
+\end{itemize}
+
+% ============================================================
+%                         PREINFORME
+% ============================================================
+
+\newpage
+
+\section{Preinforme}
+
+Se debe entregar/presentar lo siguiente al momento de entrar al laboratorio,
+la falta de alguno de estos implicará una calificación de 0.0 en la práctica.
+
+\subsection{Consulta de dispositivos}
+
+\subsubsection{SCR BT151-500R}
+
+El Rectificador Controlado de Silicio (SCR) es un dispositivo semiconductor
+de tres terminales: ánodo (A), cátodo (K) y compuerta (G). Su funcionamiento
+como interruptor se basa en el control de la corriente mediante la terminal
+de compuerta.
+
+En condición de bloqueo, el SCR puede soportar una tensión entre ánodo y
+cátodo sin conducir una corriente significativa. Cuando se aplica un pulso
+de corriente adecuado a la compuerta y el dispositivo se encuentra
+polarizado directamente, el SCR entra en conducción.
+
+Una característica fundamental es que, después del disparo, el SCR permanece
+conduciendo aunque desaparezca el pulso de compuerta, siempre que la corriente
+principal permanezca por encima de la corriente de mantenimiento $I_H$.
+
+Por esta razón, para utilizarlo como interruptor se deben considerar
+principalmente la tensión ánodo-cátodo, la corriente de carga y las
+condiciones de disparo de compuerta.
+
+\subsubsection{TRIAC MOC3020}
+
+El TRIAC es un dispositivo semiconductor bidireccional que permite controlar
+corriente en ambos sentidos. Debido a esta característica es ampliamente
+utilizado en aplicaciones de control de potencia AC.
+
+El MOC3020 es un optoacoplador cuya salida presenta comportamiento tipo
+TRIAC. Su función en el circuito no es manejar directamente la potencia de
+la carga, sino transferir el pulso de disparo desde la electrónica de control
+hacia la etapa de potencia manteniendo aislamiento galvánico.
+
+El MOC3020 es especialmente apropiado para control por fase debido a que es
+un optotriac de disparo aleatorio. Esto permite que pueda activarse en un
+instante determinado del semiciclo y no únicamente cerca del cruce por cero.
+
+\subsubsection{Comparación entre SCR y TRIAC}
+
+El SCR permite controlar la corriente principalmente en un solo sentido,
+mientras que el TRIAC puede conducir corriente en ambos sentidos.
+
+En una aplicación AC, un TRIAC puede utilizarse directamente para controlar
+los dos semiciclos. En el circuito implementado, en cambio, se emplea un SCR
+junto con un puente rectificador KBL04 para obtener el control de ambos
+semiciclos mediante un dispositivo unidireccional.
+
+\subsubsection{Optoacoplador lineal IL300}
+
+El IL300 es un optoacoplador diseñado para la transferencia aislada de
+señales analógicas. A diferencia de un optoacoplador digital convencional,
+su estructura permite obtener una transferencia aproximadamente proporcional
+entre la señal de entrada y la señal de salida.
+
+El dispositivo incorpora un LED y fotodiodos que permiten realizar una
+transferencia óptica con realimentación, reduciendo el efecto de variaciones
+debidas a temperatura, envejecimiento y dispersión de las características
+del LED.
+
+En esta práctica, el IL300 permite obtener una representación aislada de la
+tensión aplicada a la carga y enviarla posteriormente al microcontrolador
+mediante una etapa de acondicionamiento basada en LM358.
+
+\subsection{Código de control de fase}
+
+El microcontrolador recibe una señal de sincronización proveniente de la
+etapa de detección de cruce por cero. Cada vez que ocurre un cruce por cero,
+se reinicia la temporización correspondiente al semiciclo y se espera un
+intervalo determinado antes de generar el pulso de disparo.
+
+El tiempo de retardo se relaciona con el ángulo de disparo mediante:
+
+\begin{equation}
+t_{\alpha} =
+\frac{\alpha}{360^\circ}T
+\label{eq:retardo}
+\end{equation}
+
+Para una frecuencia de red de \SI{60}{Hz}:
+
+\begin{equation}
+T=\frac{1}{f}
+=\frac{1}{60}
+\approx\SI{16.67}{ms}
+\label{eq:periodo}
+\end{equation}
+
+Por ejemplo, para $\alpha=60^\circ$:
+
+\begin{equation}
+t_{\alpha}
+=
+\frac{60^\circ}{360^\circ}
+\left(\SI{16.67}{ms}\right)
+\approx\SI{2.78}{ms}
+\label{eq:retardo60}
+\end{equation}
+
+Por lo tanto, el método utilizado corresponde técnicamente a un sistema de
+control por fase sincronizado con la red y no a un PWM convencional de alta
+frecuencia.
+
+\subsection{Simulación}
+
+El circuito de control de fase debe simularse verificando principalmente:
+
+\begin{itemize}
+    \item La detección del cruce por cero.
+    \item El retardo correspondiente al ángulo de disparo.
+    \item El funcionamiento del MOC3020.
+    \item El disparo del SCR BT151-500R.
+    \item La tensión obtenida sobre la carga.
+    \item La tensión soportada por el SCR durante su estado de bloqueo.
+\end{itemize}
+
+La simulación debe permitir observar que el aumento del ángulo de disparo
+reduce el intervalo de conducción del SCR y, por lo tanto, disminuye la
+potencia entregada a la carga.
+
+% ============================================================
+%                         PRÁCTICA
+% ============================================================
+
+\section{Práctica}
+
+Se implementó el circuito de control por fase siguiendo el protocolo de
+seguridad establecido para la práctica. El sistema se dividió en las
+etapas de detección de cruce por cero, generación del retardo, activación
+aislada del SCR, etapa de potencia y medición aislada.
+
+\subsection{Etapa de aislamiento y detección de cruce por cero}
+
+El transformador recibe la tensión AC de la red mediante su devanado primario
+y entrega una tensión reducida en el secundario identificado mediante los
+terminales S1 y S2.
+
+Esta etapa cumple tres funciones principales:
+
+\begin{itemize}
+    \item Reducir la tensión proveniente de la red a un nivel adecuado para
+    el circuito de detección.
+
+    \item Proporcionar aislamiento galvánico entre la red y la electrónica
+    de control.
+
+    \item Entregar una señal sincronizada con la red que permita detectar
+    los cruces por cero.
+\end{itemize}
+
+Los diodos D1, D2, D3 y D4, implementados con 1N4007, forman un puente
+rectificador. Esto permite que la corriente aplicada al LED interno del
+RH111 mantenga la polaridad adecuada durante ambos semiciclos.
+
+La resistencia R1 de \SI{1}{k\ohm} limita la corriente de la etapa de entrada,
+mientras que el RH111 transfiere la información de la señal mediante
+aislamiento óptico.
+
+Cuando la tensión instantánea del secundario se aproxima a cero, la corriente
+del LED interno disminuye y la salida del optoacoplador cambia de estado.
+Esta transición permite obtener la señal digital ISR utilizada para
+sincronizar el microcontrolador.
+
+La resistencia R2 de \SI{470}{\ohm} establece la polarización de la salida,
+mientras que R3 y D5 acondicionan y protegen la señal que llega a la entrada
+del microcontrolador.
+
+\subsection{Cálculo del ángulo de disparo}
+
+El microcontrolador utiliza la señal ISR como referencia temporal. Al detectar
+cada cruce por cero:
+
+\begin{enumerate}
+    \item Se reinicia la temporización del semiciclo.
+    \item Se calcula el retardo correspondiente al ángulo $\alpha$.
+    \item Se espera el tiempo calculado.
+    \item Se genera el pulso denominado Disparo.
+    \item El proceso se repite en el siguiente semiciclo.
+\end{enumerate}
+
+De acuerdo con \cref{eq:retardo}, aumentar $\alpha$ implica aumentar el tiempo
+entre el cruce por cero y el pulso de Gate.
+
+\subsection{Etapa de activación del MOC3020}
+
+La salida del microcontrolador no activa directamente el SCR. La señal
+Disparo pasa por una etapa formada por R4, R7, Q1, R14 y el MOC3020.
+
+R4, de \SI{4.7}{k\ohm}, limita la corriente que llega a la base del transistor
+Q1. R7, de \SI{10}{k\ohm}, mantiene la base del transistor en un estado
+definido cuando la salida del microcontrolador se encuentra inactiva.
+
+El transistor Q1, un 2N2222, funciona como interruptor de corriente. Cuando
+la señal Disparo se encuentra en nivel alto, Q1 conduce y permite la
+circulación de corriente por el LED interno del MOC3020.
+
+La resistencia R14, de \SI{220}{\ohm}, limita la corriente del LED del
+optoacoplador.
+
+El MOC3020 proporciona aislamiento galvánico entre el circuito de control y
+la etapa de potencia. Su salida tipo TRIAC permite transferir el pulso de
+disparo en el instante requerido, característica necesaria para realizar
+control de fase.
+
+\subsection{Etapa de potencia}
+
+El puente rectificador KBL04 permite utilizar un único SCR para controlar
+ambos semiciclos de la red AC.
+
+Durante cada semiciclo, un par de diodos del puente conduce y el sentido de
+la corriente a través del SCR permanece constante. De esta manera, el SCR
+BT151-500R puede utilizarse como interruptor unidireccional dentro de un
+sistema de alimentación AC.
+
+El comportamiento del SCR puede resumirse en tres estados:
+
+\begin{enumerate}
+    \item Inicialmente permanece bloqueado.
+    \item Al recibir una corriente suficiente en Gate, se dispara.
+    \item Una vez disparado, permanece conduciendo hasta que la corriente
+    cae por debajo de la corriente de mantenimiento.
+\end{enumerate}
+
+Para una carga resistiva, el apagado ocurre aproximadamente cuando la
+corriente alcanza nuevamente el cruce por cero.
+
+\subsection{Medición aislada mediante IL300}
+
+La tensión de la carga es acondicionada mediante la red formada por R11 y
+R12 antes de ser aplicada a la etapa del IL300.
+
+El LM358 ubicado en el lado de potencia acondiciona la señal y controla la
+corriente del LED del IL300 mediante R8.
+
+El IL300 transfiere la información de forma óptica y mantiene el aislamiento
+galvánico entre la etapa de potencia y la etapa de control.
+
+Posteriormente, otro LM358 acondiciona la señal obtenida en el lado aislado
+para llevarla a la entrada analógica A0 del microcontrolador.
+
+La trayectoria de medición puede resumirse como:
+
+\[
+V_{\mathrm{carga}}
+\rightarrow
+\text{divisor resistivo}
+\rightarrow
+\text{IL300}
+\rightarrow
+\text{LM358}
+\rightarrow
+A0.
+\]
+
+% ============================================================
+%                  RESULTADOS Y ANÁLISIS
+% ============================================================
+
+\section{Informe (Resultados y Análisis)}
+
+\subsection{Señal de control a la salida del microcontrolador y tensión
+en la compuerta del SCR}
+
+La salida del microcontrolador genera un pulso de control con un nivel
+nominal de aproximadamente \SI{5}{V}. La posición temporal del pulso depende
+del ángulo de disparo $\alpha$ establecido en el programa.
+
+La señal atraviesa la siguiente cadena de activación:
+
+\[
+\text{Microcontrolador}
+\rightarrow R4
+\rightarrow Q1
+\rightarrow MOC3020
+\rightarrow R5
+\rightarrow \text{Gate del SCR}.
+\]
+
+El transistor Q1 funciona como una etapa de excitación de corriente para el
+LED interno del MOC3020. Esto evita exigir directamente al pin del
+microcontrolador la corriente necesaria para activar el optotriac y mejora
+la confiabilidad del disparo.
+
+El MOC3020 transfiere ópticamente la orden hacia la etapa de potencia,
+manteniendo el aislamiento galvánico. Por tanto, la señal del
+microcontrolador representa la orden de disparo, mientras que la señal en
+Gate corresponde a la activación final del SCR.
+
+\subsection{Forma de onda de tensión sobre la carga y sobre el SCR}
+
+Para analizar el comportamiento del sistema se considera un ángulo de
+disparo de:
+
+\[
+\alpha=60^\circ.
+\]
+
+La tensión de alimentación utilizada es aproximadamente
+\SI{120}{V RMS} a \SI{60}{Hz}. El valor pico correspondiente es:
+
+\begin{equation}
+V_{\mathrm{pico}}
+=
+V_{\mathrm{RMS}}\sqrt{2}
+=
+120\sqrt{2}
+\approx
+\SI{169.7}{V}.
+\end{equation}
+
+Por lo tanto, puede aproximarse a:
+
+\[
+V_{\mathrm{pico}}\approx\SI{170}{V}.
+\]
+
+El período de la red es:
+
+\[
+T=\frac{1}{60}
+\approx\SI{16.67}{ms}.
+\]
+
+Para $\alpha=60^\circ$, el retardo de disparo es:
+
+\[
+t_\alpha
+=
+\frac{60^\circ}{360^\circ}
+\left(\SI{16.67}{ms}\right)
+\approx
+\SI{2.78}{ms}.
+\]
+
+Durante el intervalo comprendido entre el cruce por cero y el instante
+$t_\alpha$, el SCR permanece bloqueado y la tensión aplicada a la carga es
+prácticamente nula.
+
+Una vez aplicado el pulso de Gate, el SCR entra en conducción y la tensión
+de la fuente aparece sobre la carga durante el resto del semiciclo.
+
+De forma idealizada:
+
+\begin{equation}
+V_s(t)=V_m\sin(\omega t),
+\end{equation}
+
+donde:
+
+\[
+V_m\approx\SI{170}{V}
+\]
+
+y
+
+\[
+\omega=2\pi f.
+\]
+
+Por tanto, el control de fase produce un recorte de la señal de tensión
+aplicada a la carga.
+
+Al aumentar $\alpha$, disminuye el intervalo de conducción:
+
+\[
+\alpha\uparrow
+\quad\Rightarrow\quad
+V_{\mathrm{carga,RMS}}\downarrow
+\]
+
+mientras que:
+
+\[
+\alpha\downarrow
+\quad\Rightarrow\quad
+V_{\mathrm{carga,RMS}}\uparrow.
+\]
+
+La tensión sobre el SCR presenta un comportamiento complementario. Mientras
+el SCR está bloqueado soporta una parte importante de la tensión de la
+etapa de potencia. Una vez que entra en conducción, la tensión ánodo-cátodo
+disminuye considerablemente y queda aproximadamente en el rango de la
+caída de tensión propia del dispositivo.
+
+Para las condiciones de operación consideradas puede tomarse como
+referencia:
+
+\[
+V_{AK(\mathrm{on})}\approx\SI{1}{V}-\SI{2}{V}.
+\]
+
+\subsection{Comparación entre la tensión de carga y la señal del IL300}
+
+El IL300 tiene una función diferente a la del MOC3020.
+
+El MOC3020 transmite la orden de disparo desde la etapa de control hacia la
+etapa de potencia, mientras que el IL300 permite transmitir información
+analógica en sentido contrario.
+
+La trayectoria de medición es:
+
+\[
+V_{\mathrm{carga}}
+\rightarrow
+R11-R12
+\rightarrow
+IL300
+\rightarrow
+LM358
+\rightarrow
+A0.
+\]
+
+La red resistiva reduce la tensión proveniente de la carga hasta un nivel
+adecuado para el circuito de medición. Posteriormente, el IL300 realiza la
+transferencia óptica manteniendo el aislamiento galvánico.
+
+El LM358 acondiciona la señal para adaptarla al rango de entrada analógica
+del microcontrolador.
+
+El valor pico mostrado por la interfaz serial depende de la tensión real de
+la carga, de la relación de reducción de R11-R12, de la transferencia del
+IL300 y de la ganancia configurada mediante el LM358.
+
+\subsection{Diferencia entre el IL300 y el MOC3020}
+
+\begin{table}[H]
+\centering
+\caption{Comparación entre el MOC3020 y el IL300.}
+\label{tComparacionOptos}
+\begin{tabular}{p{4cm} p{5cm} p{5cm}}
+\toprule
+\textit{Característica} & \textit{MOC3020} & \textit{IL300} \\
+\midrule
+Tipo &
+Optoacoplador con salida tipo TRIAC &
+Optoacoplador lineal \\
+
+Función &
+Disparo &
+Medición y realimentación \\
+
+Tipo de señal &
+Pulso de control &
+Señal analógica \\
+
+Dirección &
+Control $\rightarrow$ potencia &
+Potencia $\rightarrow$ control \\
+
+Aplicación &
+Activación del circuito de disparo &
+Medición aislada de la tensión de carga \\
+
+Aislamiento galvánico &
+Sí &
+Sí \\
+
+\bottomrule
+\end{tabular}
+\end{table}
+
+En síntesis, el MOC3020 se utiliza para enviar la orden de disparo,
+mientras que el IL300 permite informar al microcontrolador sobre el
+comportamiento de la señal de potencia.
+
+\subsection{Variación del ángulo de disparo}
+
+Al modificar el ángulo de disparo desde el microcontrolador se modifica el
+instante en que el SCR comienza a conducir.
+
+Para un ángulo pequeño, el disparo ocurre poco después del cruce por cero,
+por lo que el SCR permanece conduciendo durante una mayor parte del
+semiciclo. Como consecuencia, se entrega una mayor cantidad de energía a
+la carga.
+
+Cuando el ángulo aumenta, el disparo ocurre posteriormente y disminuye el
+tiempo de conducción. Por tanto, disminuyen la tensión RMS y la potencia
+entregada.
+
+El comportamiento general es:
+
+\[
+\alpha\downarrow
+\quad\Rightarrow\quad
+\text{mayor tiempo de conducción}
+\]
+
+\[
+\alpha\uparrow
+\quad\Rightarrow\quad
+\text{menor tiempo de conducción}.
+\]
+
+Para una carga resistiva y una alimentación de \SI{120}{V RMS}, se tienen
+los siguientes valores teóricos de referencia:
+
+\begin{table}[H]
+\centering
+\caption{Tensión RMS teórica para diferentes ángulos de disparo.}
+\label{tRMS}
+\begin{tabular}{cc}
+\toprule
+\textit{Ángulo de disparo $\alpha$} &
+\textit{Tensión RMS aproximada} \\
+\midrule
+$30^\circ$ & \SI{118.5}{V} \\
+$60^\circ$ & \SI{107.8}{V} \\
+$90^\circ$ & \SI{85.0}{V} \\
+$120^\circ$ & \SI{53.2}{V} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Estos valores corresponden a una referencia teórica y no deben interpretarse
+como mediciones experimentales.
+
+\subsection{Efecto de un pulso demasiado corto en el MOC3020}
+
+El disparo confiable del SCR requiere una corriente de compuerta suficiente
+durante un tiempo adecuado.
+
+La condición básica de disparo puede expresarse como:
+
+\begin{equation}
+I_G\geq I_{GT}.
+\end{equation}
+
+Si el pulso enviado mediante el MOC3020 es demasiado corto, pueden
+presentarse diferentes comportamientos:
+
+\begin{itemize}
+    \item El SCR puede no dispararse.
+    \item El disparo puede ser intermitente.
+    \item El SCR puede activarse en algunos ciclos y no en otros.
+    \item La forma de onda de la carga puede presentar irregularidades.
+    \item La potencia entregada puede variar entre ciclos.
+\end{itemize}
+
+Además, para que el SCR quede enclavado después del disparo, la corriente
+principal debe alcanzar la corriente de enclavamiento $I_L$. Una vez
+establecida la conducción, el SCR puede permanecer activado mientras la
+corriente sea superior a la corriente de mantenimiento $I_H$.
+
+Por esta razón, el diseño del pulso debe considerar simultáneamente la
+corriente de Gate y su duración.
+
+\subsection{Necesidad de implementar tres aislamientos galvánicos}
+
+El sistema emplea tres mecanismos de aislamiento con funciones diferentes.
+
+\begin{enumerate}
+    \item \textbf{Transformador T1:} proporciona aislamiento entre la red
+    eléctrica y la etapa de detección de sincronismo utilizada por el
+    microcontrolador.
+
+    \item \textbf{MOC3020:} proporciona aislamiento entre el pulso de control
+    del microcontrolador y el circuito de disparo del SCR.
+
+    \item \textbf{IL300:} proporciona aislamiento entre la tensión de la
+    etapa de potencia y la entrada analógica del microcontrolador.
+\end{enumerate}
+
+Los tres aislamientos permiten transmitir información entre las diferentes
+etapas sin establecer una conexión eléctrica directa.
+
+Esto mejora la seguridad del sistema y reduce la posibilidad de que
+sobretensiones, transitorios o corrientes de retorno provenientes de la
+etapa de potencia alcancen el microcontrolador, el computador o los equipos
+de medición.
+
+\subsection{Separación entre la tierra de control y la referencia de potencia}
+
+La tierra de control y la referencia de potencia deben permanecer
+eléctricamente separadas.
+
+La etapa de potencia trabaja con una tensión de aproximadamente
+\SI{120}{V RMS}, cuyo valor pico es cercano a:
+
+\[
+V_{\mathrm{pico}}\approx\SI{170}{V}.
+\]
+
+En contraste, la electrónica de control trabaja con niveles del orden de
+\SI{5}{V}.
+
+Si ambas referencias fueran conectadas directamente, se perdería el
+aislamiento galvánico y cualquier falla, sobretensión o transitorio de la
+etapa de potencia podría propagarse hacia el microcontrolador.
+
+Esto podría producir:
+
+\begin{itemize}
+    \item Daños en el microcontrolador.
+    \item Corrientes de retorno no deseadas.
+    \item Errores de medición.
+    \item Cortocircuitos.
+    \item Riesgo eléctrico para el usuario y los equipos.
+\end{itemize}
+
+Por tanto:
+
+\begin{equation}
+GND_{\mathrm{control}}
+\neq
+\text{Referencia}_{\mathrm{potencia}}.
+\end{equation}
+
+Los transformadores y optoacopladores permiten intercambiar información
+sin eliminar esta separación eléctrica.
+
+\subsection{Funcionamiento del optoacoplador lineal IL300}
+
+El IL300 permite transferir una señal analógica manteniendo aislamiento
+galvánico.
+
+La tensión de la carga primero es reducida mediante el divisor resistivo
+formado por R11 y R12. Esta señal acondicionada controla el LED interno del
+IL300.
+
+La corriente del LED produce una señal óptica que es detectada por los
+fotodiodos internos del dispositivo. La estructura de realimentación del
+IL300 permite obtener una transferencia más precisa que la de un
+optoacoplador convencional utilizado como interruptor.
+
+Posteriormente, el LM358 acondiciona la señal obtenida para adaptarla a la
+entrada analógica A0 del microcontrolador.
+
+La cadena completa es:
+
+\[
+V_{\mathrm{carga}}
+\rightarrow
+\text{divisor resistivo}
+\rightarrow
+IL300
+\rightarrow
+LM358
+\rightarrow
+A0.
+\]
+
+De esta forma, el microcontrolador puede obtener información relacionada
+con la forma de onda de la carga sin estar conectado eléctricamente a la
+etapa de potencia.
+
+\subsection{Diferencia operativa entre SCR y TRIAC}
+
+El SCR es un dispositivo controlado que conduce principalmente en un solo
+sentido. Después de recibir un pulso adecuado en la compuerta, permanece
+conduciendo mientras la corriente principal sea suficiente para mantener
+su estado de conducción.
+
+El TRIAC puede conducir corriente en ambos sentidos y, por ello, resulta
+apropiado para controlar directamente cargas AC.
+
+En el circuito estudiado, el MOC3020 posee una salida tipo TRIAC, pero no
+maneja directamente la potencia de la carga. Su función es transferir de
+forma aislada el pulso que participa en el disparo del SCR.
+
+Por tanto:
+
+\[
+\boxed{\text{SCR: conducción principalmente unidireccional}}
+\]
+
+\[
+\boxed{\text{TRIAC: conducción bidireccional}}
+\]
+
+El puente KBL04 permite compensar la característica unidireccional del SCR
+y posibilita el control de ambos semiciclos de la alimentación AC.
+
+\subsection{Análisis general de los resultados}
+
+Los resultados obtenidos permiten verificar el principio de funcionamiento
+del control de fase mediante el SCR BT151-500R.
+
+La variación del ángulo de disparo modifica directamente el intervalo de
+conducción del tiristor. Cuando $\alpha$ disminuye, el pulso de Gate aparece
+más cerca del cruce por cero, permitiendo que el SCR conduzca durante una
+mayor parte del semiciclo. En consecuencia, aumenta la tensión RMS aplicada
+a la carga y, para una carga resistiva, también aumenta la potencia
+transferida.
+
+Por el contrario, un incremento de $\alpha$ desplaza el disparo hacia una
+posición posterior dentro del semiciclo. Esto reduce el intervalo de
+conducción y disminuye la tensión RMS y la potencia entregada.
+
+El MOC3020 permite realizar este disparo manteniendo el aislamiento
+galvánico entre el microcontrolador y la etapa de potencia. El transistor
+Q1 proporciona la corriente necesaria para activar el LED interno del
+MOC3020, evitando que el microcontrolador tenga que suministrarla
+directamente.
+
+El IL300 cumple una función complementaria, ya que permite obtener una
+realimentación analógica aislada de la tensión presente en la carga. Esta
+señal es acondicionada mediante LM358 y llevada a la entrada analógica del
+microcontrolador.
+
+Finalmente, la duración del pulso de Gate es un parámetro importante para
+garantizar un disparo estable del SCR. Si la corriente de compuerta es
+insuficiente o el pulso tiene una duración demasiado corta, puede producirse
+un disparo intermitente y, por tanto, una potencia irregular en la carga.
+
+En conjunto, el circuito integra sincronización con la red, control de
+ángulo de fase, aislamiento galvánico y realimentación analógica, permitiendo
+regular de manera controlada la potencia entregada a una carga AC.
+
+% ============================================================
+%                         CONCLUSIONES
+% ============================================================
+
+\section{Conclusiones}
+
+\begin{itemize}
+
+    \item Se verificó el principio de control de potencia por ángulo de fase
+    utilizando el SCR BT151-500R. La posición temporal del pulso de Gate
+    respecto al cruce por cero determina el instante de inicio de conducción
+    del dispositivo y, por tanto, el intervalo durante el cual la carga
+    recibe energía.
+
+    \item La etapa de detección de cruce por cero permite establecer una
+    referencia temporal sincronizada con la red eléctrica. Esta sincronización
+    es fundamental para que el microcontrolador pueda generar retardos
+    correspondientes a diferentes valores del ángulo de disparo $\alpha$.
+
+    \item El MOC3020 permite transferir el pulso de disparo manteniendo
+    aislamiento galvánico entre el sistema de control y la etapa de potencia.
+    El transistor Q1 actúa como etapa de excitación, proporcionando la
+    corriente necesaria para activar el LED interno del optotriac.
+
+    \item El puente rectificador KBL04 permite emplear un único SCR para
+    controlar ambos semiciclos de la señal AC. De esta manera, la corriente
+    que atraviesa el SCR mantiene la misma dirección aunque la polaridad de
+    la red cambie.
+
+    \item Se estableció que el aumento del ángulo de disparo reduce el
+    intervalo de conducción del SCR. Para una carga resistiva, esta reducción
+    implica una disminución de la tensión RMS y de la potencia entregada a
+    la carga.
+
+    \item El IL300 permite realizar una medición analógica aislada de la
+    tensión de carga. Su utilización junto con los amplificadores LM358
+    permite acondicionar la señal y llevarla al microcontrolador sin
+    establecer una conexión eléctrica directa entre la etapa de potencia y
+    la electrónica de control.
+
+    \item La implementación de los tres mecanismos de aislamiento,
+    correspondientes al transformador, al MOC3020 y al IL300, permite
+    separar las funciones de sincronización, disparo y medición, reduciendo
+    el riesgo de transferencia de sobretensiones y transitorios hacia el
+    microcontrolador y los equipos de medición.
+
+    \item Finalmente, se determinó que un pulso de Gate debe presentar una
+    corriente y duración adecuadas para garantizar el disparo y enclavamiento
+    del SCR. Un pulso demasiado corto puede producir disparos intermitentes,
+    deformación de la señal de carga y variaciones de potencia entre
+    diferentes ciclos.
+
+\end{itemize}
+
+% ============================================================
+%                         BIBLIOGRAFÍA
+% ============================================================
+
+\begin{thebibliography}{99}
+
+\bibitem{ltspice}
+Analog Devices,
+``LTspice Simulator,''
+2026.
+Disponible en:
+\url{https://www.analog.com/en/resources/design-tools-and-calculators/ltspice-simulator.html}.
+
+\end{thebibliography}
+
+% ============================================================
+%                  EQUIPOS Y COMPONENTES
+% ============================================================
+
+\newpage
+
+\section*{Listado de Equipos, Herramientas y Componentes}
+
+{\textbf{\estudiantes}}
+
+\begin{table}[H]
+    \centering
+    \caption{Elementos utilizados o solicitados para la Práctica 2.}
+
+    \resizebox{0.9\textwidth}{!}{
+    \begin{tabular}{c p{11cm} c}
+    \toprule
+    \toprule
+    \textit{Item} & \textit{Elemento} & \textit{Cantidad} \\
+    \midrule
+
+    1 & Osciloscopio + puntas de medición & 1 \\
+
+    \midrule
+    2 & Multímetro + puntas de medición & 1 \\
+
+    \midrule
+    3 & Fuente DC & 1 \\
+
+    \midrule
+    4 & Protoboard & 1 \\
+
+    \midrule
+    5 & Transformador de aislamiento/medición & 1 \\
+
+    \midrule
+    6 & Microcontrolador (STM32, ESP32 o Raspberry Pi Pico) & 1 \\
+
+    \midrule
+    7 & SCR BT151-500R & 1 \\
+
+    \midrule
+    8 & Optotriac MOC3020 & 1 \\
+
+    \midrule
+    9 & Optoacoplador lineal IL300 & 1 \\
+
+    \midrule
+    10 & Optoacoplador RH111 & 1 \\
+
+    \midrule
+    11 & Puente rectificador KBL04 & 1 \\
+
+    \midrule
+    12 & Amplificador operacional LM358 & 2 \\
+
+    \midrule
+    13 & Transistor 2N2222 & 1 \\
+
+    \midrule
+    14 & Diodo 1N4007 & 4 \\
+
+    \midrule
+    15 & Diodo 1N4148 & 1 \\
+
+    \midrule
+    16 & Resistencia \SI{1}{k\ohm} & 2 \\
+
+    \midrule
+    17 & Resistencia \SI{470}{\ohm} & 1 \\
+
+    \midrule
+    18 & Resistencia \SI{4.7}{k\ohm} & 2 \\
+
+    \midrule
+    19 & Resistencia \SI{10}{k\ohm} & 1 \\
+
+    \midrule
+    20 & Resistencia \SI{220}{\ohm} & 2 \\
+
+    \midrule
+    21 & Bombillo AC & 1 \\
+
+    \midrule
+    22 & Alambre para conexiones & Según necesidad \\
+
+    \midrule
+
+    \bottomrule
+    \end{tabular}
+    }
+
+    \label{tElementos}
+
+\end{table}
+
+\end{document}
