@@ -24,6 +24,8 @@ struct PwmConfig {
   float dutyMax;
 };
 
+constexpr float D_NOMINAL = 0.4117f;
+
 struct LedPins {
   int ok;
   int fault;
@@ -60,7 +62,7 @@ PwmConfig pwmCfg = {
   0,             // Canal LEDC
   20000,         // Frecuencia de PWM
   10,            // Resolución del PWM
-  0.4117f,       // Duty nominal recomendado
+  D_NOMINAL,     // Duty nominal recomendado
   0.0f,          // Límite inferior
   0.55f          // Límite superior
 };
@@ -73,10 +75,10 @@ LedPins ledPins = {
 ControlConfig ctrlCfg = {
   0.0001f,       // Ts = 100 us (10 kHz)
   1.5f,          // Setpoint en A (configurable)
-  0.0f,          // kp: dejar en 0 hasta definir el modelo de Laplace real
-  0.0f,          // ki: dejar en 0 hasta definir el modelo de Laplace real
-  0.0f,          // kd: dejar en 0 hasta definir el modelo de Laplace real
-  0.0f           // Clamp de integral. 0 = deshabilitado
+  0.4912f,       // Kp del modelo C(s) = Kp + Ki/s
+  750.2f,        // Ki [1/s] del modelo C(s) = Kp + Ki/s
+  0.0f,          // No se usa termino derivativo en el modelo PI
+  0.0f           // Limite opcional de integral. 0 = sin limite adicional
 };
 
 ControlState ctrlState = {0.0f, 0.0f};
@@ -142,36 +144,35 @@ void setupPWM(void) {
 }
 
 // =============================================================
-// CONTROLADOR DISCRETO
+// CONTROLADOR PI DISCRETO
 // =============================================================
-// Si no hay un modelo de Laplace validado, no se inventa uno.
-// Se deja un bloque TODO para introducir la forma discreta real.
+// C(s) = Kp + Ki/s
+// Integrador discretizado con Tustin:
+// I[n] = I[n-1] + Ki*Ts/2*(e[n] + e[n-1])
+// La salida es una correccion de duty alrededor de D_NOMINAL.
 // =============================================================
 float computeControlAction(float error) {
-  // TODO: Reemplazar este bloque por la realización discreta del
-  // modelo de Laplace validado del sistema.
-  //
-  // Ejemplo de estructura válida (solo como plantilla):
-  //   ctrlState.integral += error * ctrlCfg.Ts;
-  //   if (ctrlCfg.integralLimit > 0.0f) {
-  //     ctrlState.integral = constrain(ctrlState.integral,
-  //                                  -ctrlCfg.integralLimit,
-  //                                   ctrlCfg.integralLimit);
-  //   }
-  //   float derivative = (error - ctrlState.prevError) / ctrlCfg.Ts;
-  //   float u = ctrlCfg.kp * error + ctrlCfg.ki * ctrlState.integral + ctrlCfg.kd * derivative;
-  //   ctrlState.prevError = error;
-  //   return u;
-  //
-  // En este punto, como no hay modelo validado, se deja la salida en cero
-  // para evitar inventar una ley de control falsa.
-  return 0.0f;
-}
+  const float deltaIntegral = ctrlCfg.ki * ctrlCfg.Ts * 0.5f *
+                              (error + ctrlState.prevError);
+  const float actionUnsaturated = ctrlCfg.kp * error +
+                                  ctrlState.integral + deltaIntegral;
+  const float dutyUnsaturated = pwmCfg.dutyNominal + actionUnsaturated;
+  const bool saturatedHigh = dutyUnsaturated > pwmCfg.dutyMax;
+  const bool saturatedLow = dutyUnsaturated < pwmCfg.dutyMin;
 
-void applyAntiWindup(float dutyCandidate) {
-  // Si hay integral, se recomienda congelarla cuando el duty sale del rango.
-  // Aquí se mantiene un punto de entrada para la lógica real del anti-windup.
-  (void)dutyCandidate;
+  // Integracion condicional: no acumular si el error profundiza la saturacion.
+  if (!((saturatedHigh && error > 0.0f) ||
+        (saturatedLow && error < 0.0f))) {
+    ctrlState.integral += deltaIntegral;
+    if (ctrlCfg.integralLimit > 0.0f) {
+      ctrlState.integral = constrain(ctrlState.integral,
+                                     -ctrlCfg.integralLimit,
+                                      ctrlCfg.integralLimit);
+    }
+  }
+
+  ctrlState.prevError = error;
+  return ctrlCfg.kp * error + ctrlState.integral;
 }
 
 // =============================================================
@@ -251,17 +252,11 @@ void loop() {
     currentA = readCurrentA();
     errorA = ctrlCfg.setpointA - currentA;
 
-    // TODO: cuando el modelo de Laplace real esté disponible, reemplazar esta línea.
     float controlAction = computeControlAction(errorA);
 
-    // Duty nominal + acción del controlador.
+    // Duty nominal + accion correctiva del controlador PI.
     float dutyCandidate = pwmCfg.dutyNominal + controlAction;
     dutyCandidate = constrain(dutyCandidate, pwmCfg.dutyMin, pwmCfg.dutyMax);
-
-    // Si la acción de control satura, se puede congelar la integral aquí.
-    if (dutyCandidate <= pwmCfg.dutyMin || dutyCandidate >= pwmCfg.dutyMax) {
-      applyAntiWindup(dutyCandidate);
-    }
 
     applyDuty(dutyCandidate);
 
