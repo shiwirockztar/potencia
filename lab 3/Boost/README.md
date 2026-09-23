@@ -68,20 +68,23 @@ float v_adc = v_adc_mV / 1000.0f;
 
 El código usa:
 
-```cpp
-const float DIVISOR_RATIO = 0.6f;
-```
-
-Esto significa que se considera que el divisor entrega el 60 % de la tensión original del ACS712 al ADC:
+El divisor está formado por una resistencia de `10 kOhm` entre la salida del ACS712 y el nodo del ADC, y una resistencia de `20 kOhm` entre el nodo del ADC y tierra:
 
 ```text
-Vadc = 0.6 * Vacs
+ACS712 Vout --- 10 kOhm --- GPIO34 --- 20 kOhm --- GND
 ```
 
-Por eso se recupera la tensión del sensor con:
+Por tanto, el divisor entrega al ADC:
 
 ```text
-Vacs = Vadc / 0.6
+Vadc = Vacs * 20 / (10 + 20)
+Vadc = Vacs * 0.6667
+```
+
+En el código, esta relación se expresa como `DIVISOR_RATIO = 20 / (10 + 20)`. Para recuperar la tensión original del sensor:
+
+```text
+Vacs = Vadc / 0.6667
 ```
 
 ### 3. Conversión de tensión a corriente
@@ -102,17 +105,17 @@ I medida = (Vacs - 2.3853 V) / 0.1891 V/A
 En una sola expresión:
 
 ```text
-I medida = ((Vadc / 0.6) - 2.3853) / 0.1891
+I medida = ((Vadc / 0.6667) - 2.3853) / 0.1891
 ```
 
 El resultado se expresa en amperios y se almacena en `iL_medida`.
 
 ### Ejemplo
 
-Si el ADC mide `1.4312 V` después del divisor:
+Si el ADC mide aproximadamente `1.5902 V` después del divisor:
 
 ```text
-Vacs = 1.4312 / 0.6 = 2.3853 V
+Vacs = 1.5902 / 0.6667 = 2.3853 V
 I medida = (2.3853 - 2.3853) / 0.1891 = 0 A
 ```
 
@@ -142,7 +145,7 @@ Para recalibrarlo:
 
 1. Dejar el convertidor sin corriente por el ACS712.
 2. Medir la tensión real de salida del ACS712, antes del divisor.
-3. Sustituir `2.3853f` por ese valor en voltios.
+3. Sustituir `2.3853f` por ese valor en voltios. Ese valor debe ser la salida del ACS712 antes del divisor, porque el programa recupera primero `Vacs`.
 4. Comprobar la lectura mostrada por Serial.
 
 La sensibilidad `0.1891 V/A` también debe corresponder al sensor utilizado y a la calibración experimental. Si se cambia el ACS712 o el circuito analógico, hay que recalibrar ambos parámetros.
@@ -170,7 +173,7 @@ Para cambiar la referencia, enviar por Serial un valor entre `0` y `100`, que re
 | `CONTROL_FS_HZ` | 10000 Hz | Frecuencia del control PI |
 | `IREF_MAX` | 3.0 A | Corriente máxima de referencia |
 | `IL_MAX` | 2.0 A | Límite de corriente |
-| `DIVISOR_RATIO` | 0.6 | Relación del divisor resistivo |
+| `DIVISOR_RATIO` | 0.6667 | Relación del divisor de 10 kOhm y 20 kOhm |
 | `ACS712_SENS` | 0.1891 V/A | Sensibilidad calibrada |
 | `acs712_offset_V` | 2.3853 V | Offset a corriente cero |
 | `KP` | 0.4912 | Ganancia proporcional |

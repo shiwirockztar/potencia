@@ -127,18 +127,20 @@ const float IREF_MAX = 3.0f;
 // ACS712
 // =======================================================================
 
-// Divisor resistivo
+// Divisor resistivo: 10 kOhm desde ACS712 al nodo ADC y 20 kOhm
+// desde el nodo ADC a tierra.
 //
-// ACS712 -> divisor -> ADC ESP32
+// ACS712 -> 10 kOhm -> GPIO34 -> 20 kOhm -> GND
+// Vadc = Vacs * 20 / (10 + 20)
 
-const float DIVISOR_RATIO = 0.6f;
+const float DIVISOR_RATIO = 20.0f / (10.0f + 20.0f);
 
 
 // Sensibilidad medida
 const float ACS712_SENS = 0.1891f;
 
 
-// Offset medido
+// Offset medido en la salida del ACS712, antes del divisor
 float acs712_offset_V = 2.3853f;
 
 
