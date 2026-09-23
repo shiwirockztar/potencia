@@ -136,12 +136,19 @@ const float IREF_MAX = 3.0f;
 const float DIVISOR_RATIO = 20.0f / (10.0f + 20.0f);
 
 
-// Sensibilidad medida
-const float ACS712_SENS = 0.1891f;
+// Sensibilidad calibrada con el amperimetro y este montaje
+const float ACS712_SENS = 0.3047f;
 
 
 // Offset medido en la salida del ACS712, antes del divisor
 float acs712_offset_V = 2.3853f;
+
+
+// Calibracion lineal final con dos puntos medidos:
+// 0.183 A del codigo -> 0.189 A reales
+// 0.440 A del codigo -> 0.600 A reales
+const float CURRENT_CAL_GAIN = 1.60f;
+const float CURRENT_CAL_OFFSET_A = -0.104f;
 
 
 // =======================================================================
@@ -223,7 +230,9 @@ float leerCorrienteA()
         / ACS712_SENS;
 
 
-    return corriente;
+    return
+        corriente * CURRENT_CAL_GAIN
+        + CURRENT_CAL_OFFSET_A;
 }
 
 
@@ -666,11 +675,21 @@ void loop()
         // ------------------------------------------------------------
 
         static int contador_print = 0;
+        static float suma_corriente = 0.0f;
+
+        suma_corriente += iL_medida;
 
 
         if (++contador_print >= 500)
         {
+            float iL_medida_promedio =
+                suma_corriente / contador_print;
+
+            float error_promedio =
+                Iref - iL_medida_promedio;
+
             contador_print = 0;
+            suma_corriente = 0.0f;
 
 
             Serial.print(
@@ -688,7 +707,7 @@ void loop()
             );
 
             Serial.print(
-                iL_medida,
+                iL_medida_promedio,
                 3
             );
 
@@ -698,7 +717,7 @@ void loop()
             );
 
             Serial.print(
-                error,
+                error_promedio,
                 3
             );
 
