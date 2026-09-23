@@ -136,19 +136,20 @@ const float IREF_MAX = 3.0f;
 const float DIVISOR_RATIO = 20.0f / (10.0f + 20.0f);
 
 
-// Sensibilidad calibrada con el amperimetro y este montaje
-const float ACS712_SENS = 0.3047f;
+// Sensibilidad medida
+const float ACS712_SENS = 0.1891f;
+
+
+// Numero de muestras promediadas por lectura
+const int NUM_MUESTRAS_CORRIENTE = 8;
+
+
+// Numero de muestras para calibrar el cero al arrancar
+const int NUM_MUESTRAS_OFFSET = 128;
 
 
 // Offset medido en la salida del ACS712, antes del divisor
 float acs712_offset_V = 2.3853f;
-
-
-// Calibracion lineal final con dos puntos medidos:
-// 0.183 A del codigo -> 0.189 A reales
-// 0.440 A del codigo -> 0.600 A reales
-const float CURRENT_CAL_GAIN = 1.60f;
-const float CURRENT_CAL_OFFSET_A = -0.104f;
 
 
 // =======================================================================
@@ -211,8 +212,21 @@ void IRAM_ATTR onTimerControl()
 
 float leerCorrienteA()
 {
+    float suma_adc_mV = 0.0f;
+
+
+    for (int muestra = 0;
+         muestra < NUM_MUESTRAS_CORRIENTE;
+         muestra++)
+    {
+        suma_adc_mV +=
+            analogReadMilliVolts(PIN_ADC_CORRIENTE);
+    }
+
+
     float v_adc_mV =
-        analogReadMilliVolts(PIN_ADC_CORRIENTE);
+        suma_adc_mV /
+        NUM_MUESTRAS_CORRIENTE;
 
 
     float v_adc =
@@ -230,9 +244,7 @@ float leerCorrienteA()
         / ACS712_SENS;
 
 
-    return
-        corriente * CURRENT_CAL_GAIN
-        + CURRENT_CAL_OFFSET_A;
+    return corriente;
 }
 
 
@@ -409,6 +421,31 @@ void setup()
         PIN_ADC_CORRIENTE,
         ADC_11db
     );
+
+
+    // Calibrar el punto cero antes de activar los PWM.
+    // No debe circular corriente por el ACS712 durante este proceso.
+    float suma_offset_mV = 0.0f;
+
+    for (int muestra = 0;
+         muestra < NUM_MUESTRAS_OFFSET;
+         muestra++)
+    {
+        suma_offset_mV +=
+            analogReadMilliVolts(PIN_ADC_CORRIENTE);
+    }
+
+    float offset_adc_V =
+        (suma_offset_mV / NUM_MUESTRAS_OFFSET) /
+        1000.0f;
+
+    acs712_offset_V =
+        offset_adc_V /
+        DIVISOR_RATIO;
+
+    Serial.print("Offset ACS712 calibrado: ");
+    Serial.print(acs712_offset_V, 4);
+    Serial.println(" V");
 
 
     // ===================================================================
@@ -675,21 +712,11 @@ void loop()
         // ------------------------------------------------------------
 
         static int contador_print = 0;
-        static float suma_corriente = 0.0f;
-
-        suma_corriente += iL_medida;
 
 
         if (++contador_print >= 500)
         {
-            float iL_medida_promedio =
-                suma_corriente / contador_print;
-
-            float error_promedio =
-                Iref - iL_medida_promedio;
-
             contador_print = 0;
-            suma_corriente = 0.0f;
 
 
             Serial.print(
@@ -707,7 +734,7 @@ void loop()
             );
 
             Serial.print(
-                iL_medida_promedio,
+                iL_medida,
                 3
             );
 
@@ -717,7 +744,7 @@ void loop()
             );
 
             Serial.print(
-                error_promedio,
+                error,
                 3
             );
 

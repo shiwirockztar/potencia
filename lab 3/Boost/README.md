@@ -64,6 +64,12 @@ float v_adc = v_adc_mV / 1000.0f;
 
 `analogReadMilliVolts()` devuelve la tensión aproximada presente en GPIO34.
 
+Para reducir el ruido, el programa toma 8 lecturas consecutivas y utiliza su promedio. El número de muestras se puede cambiar en `NUM_MUESTRAS_CORRIENTE`.
+
+Más muestras normalmente producen una lectura más estable, pero también aumentan el tiempo empleado en cada ciclo de control. Por eso conviene aumentar este valor gradualmente y comprobar que el control siga respondiendo correctamente.
+
+Además, al arrancar se toman 128 muestras con los PWM todavía desactivados para calibrar automáticamente el punto de cero. Durante esta calibración no debe circular corriente por el ACS712. El valor calculado se muestra por el monitor Serial como `Offset ACS712 calibrado` y reemplaza el valor inicial de `acs712_offset_V`.
+
 ### 2. Recuperación de la tensión del ACS712
 
 El código usa:
@@ -92,20 +98,20 @@ Vacs = Vadc / 0.6667
 Los parámetros utilizados son:
 
 ```cpp
-const float ACS712_SENS = 0.3047f;
+const float ACS712_SENS = 0.1891f;
 float acs712_offset_V = 2.3853f;
 ```
 
 La fórmula completa es:
 
 ```text
-I medida = (Vacs - 2.3853 V) / 0.3047 V/A
+I medida = (Vacs - 2.3853 V) / 0.1891 V/A
 ```
 
 En una sola expresión:
 
 ```text
-I medida = ((Vadc / 0.6667) - 2.3853) / 0.3047
+I medida = ((Vadc / 0.6667) - 2.3853) / 0.1891
 ```
 
 El resultado se expresa en amperios y se almacena en `iL_medida`.
@@ -116,13 +122,13 @@ Si el ADC mide aproximadamente `1.5902 V` después del divisor:
 
 ```text
 Vacs = 1.5902 / 0.6667 = 2.3853 V
-I medida = (2.3853 - 2.3853) / 0.3047 = 0 A
+I medida = (2.3853 - 2.3853) / 0.1891 = 0 A
 ```
 
 Si el ACS712 entrega `2.5744 V` antes del divisor:
 
 ```text
-I medida = (2.5744 - 2.3853) / 0.3047 = 0.62 A aproximadamente
+I medida = (2.5744 - 2.3853) / 0.1891 = 1 A aproximadamente
 ```
 
 ## Conexión de la medida
@@ -148,15 +154,7 @@ Para recalibrarlo:
 3. Sustituir `2.3853f` por ese valor en voltios. Ese valor debe ser la salida del ACS712 antes del divisor, porque el programa recupera primero `Vacs`.
 4. Comprobar la lectura mostrada por Serial.
 
-La sensibilidad calibrada actual es `0.3047 V/A` y corresponde a este sensor y montaje. Si se cambia el ACS712 o el circuito analógico, hay que recalibrar ambos parámetros.
-
-Además, el código aplica una calibración lineal final para compensar la diferencia observada entre dos puntos de referencia:
-
-```text
-Icalibrada = Icalculada * 1.60 - 0.104 A
-```
-
-Los puntos usados fueron aproximadamente `0.183 A -> 0.189 A` y `0.440 A -> 0.600 A`. Esta corrección supone que el amperímetro y el sensor mantienen una relación lineal en ese rango.
+La sensibilidad `0.1891 V/A` también debe corresponder al sensor utilizado y a la calibración experimental. Si se cambia el ACS712 o el circuito analógico, hay que recalibrar ambos parámetros.
 
 ## Monitor Serial
 
@@ -167,11 +165,9 @@ Iref=1.500 A   Imedida=1.234 A   Error=0.266   Duty_PI=42.50 %
 ```
 
 - `Iref`: corriente solicitada por el PWM generador.
-- `Imedida`: promedio de 500 lecturas de corriente calculadas a partir de GPIO34.
-- `Error`: diferencia entre la referencia y la corriente medida promedio.
+- `Imedida`: corriente calculada a partir de GPIO34.
+- `Error`: diferencia entre la referencia y la corriente medida.
 - `Duty_PI`: duty aplicado al PWM de control en GPIO25.
-
-El controlador PI sigue usando la lectura instantánea a 10 kHz. El promedio se aplica solamente a la telemetría para reducir el rizado visible en el monitor Serial sin introducir retraso en el control.
 
 Para cambiar la referencia, enviar por Serial un valor entre `0` y `100`, que representa el duty del PWM generador en porcentaje. Por ejemplo, enviar `50` establece una referencia aproximada de `1.5 A`.
 
@@ -184,10 +180,8 @@ Para cambiar la referencia, enviar por Serial un valor entre `0` y `100`, que re
 | `IREF_MAX` | 3.0 A | Corriente máxima de referencia |
 | `IL_MAX` | 2.0 A | Límite de corriente |
 | `DIVISOR_RATIO` | 0.6667 | Relación del divisor de 10 kOhm y 20 kOhm |
-| `ACS712_SENS` | 0.3047 V/A | Sensibilidad calibrada con amperimetro |
+| `ACS712_SENS` | 0.1891 V/A | Sensibilidad calibrada |
 | `acs712_offset_V` | 2.3853 V | Offset a corriente cero |
-| `CURRENT_CAL_GAIN` | 1.60 | Ganancia de calibración final |
-| `CURRENT_CAL_OFFSET_A` | -0.104 A | Offset de calibración final |
 | `KP` | 0.4912 | Ganancia proporcional |
 | `KI` | 750.2 | Ganancia integral |
 
