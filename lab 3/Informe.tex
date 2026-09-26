@@ -1,0 +1,392 @@
+\documentclass[12pt]{article}
+
+\usepackage[spanish]{babel}
+\addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{setspace}
+\setstretch{1.15}
+\usepackage{xcolor}
+\definecolor{tituloazul}{RGB}{31,100,160}
+\usepackage[colorlinks=true,linkcolor=tituloazul,citecolor=tituloazul,urlcolor=tituloazul]{hyperref}
+\usepackage{titlesec}
+\titleformat{\section}{\color{tituloazul}\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\color{tituloazul}\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\color{tituloazul}\small\bfseries}{\thesubsubsection}{0.5em}{}
+\titlespacing{\section}{0pt}{12pt}{6pt}
+\titlespacing{\subsection}{0pt}{8pt}{4pt}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textcolor{tituloazul}{Electrónica de Potencia}}
+\fancyhead[R]{\textcolor{tituloazul}{Laboratorio 3}}
+\fancyfoot[C]{\thepage}
+\setlength{\headheight}{15pt}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\captionsetup{skip=5pt,font=small}
+\setlist{topsep=5pt,itemsep=3pt,parsep=2pt}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\sisetup{per-mode=symbol,detect-all}
+\usepackage[spanish,capitalize,nameinlink]{cleveref}
+\crefname{figure}{figura}{figuras}
+\Crefname{figure}{Figura}{Figuras}
+\crefname{equation}{ecuación}{ecuaciones}
+\Crefname{equation}{Ecuación}{Ecuaciones}
+\crefname{table}{tabla}{tablas}
+\Crefname{table}{Tabla}{Tablas}
+\usepackage[siunitx]{circuitikz}
+\usetikzlibrary{babel}
+
+\newcommand{\estudiantes}{Jose Leonardo Perez Poveda, Sergio Hoyos Mejía, Alberto Mario Salazar Callejas}
+
+\begin{document}
+\vspace*{-1cm}
+\begin{center}
+{\Huge\textcolor{tituloazul}{\textbf{Laboratorio 3}\\Diseño y simulación de un convertidor Boost}}
+\vspace{0.2cm}
+
+{\textbf{\estudiantes}}
+\vspace{0.2cm}
+
+\textit{Ingeniería Electrónica}\\
+\textit{Universidad de Antioquia}\\
+\textit{Medellín-Colombia}
+\end{center}
+\vspace{0.3cm}
+
+\noindent\textcolor{tituloazul}{\textbf{Resumen:}} En este laboratorio se analizó y se implementó físicamente un convertidor elevador de tensión (Boost) con entrada de \SI{10}{V} DC, inductor de \SI{2.7}{mH}, diodo MUR460, MOSFET IRFZ44N y carga de \SI{19.3}{\ohm}. El circuito integra una etapa de potencia y un lazo de control formado por un sensor ACS712, un acondicionador de señal, un compensador Laplace, un limitador, un modulador PWM y un driver UCC21520. La frecuencia nominal del modulador es \SI{20}{kHz} y el condensador de salida utilizado en el diseño es de \SI{22}{\micro F}. El objetivo experimental es comparar las variables obtenidas en la simulación con las mediciones del montaje físico, sin atribuir resultados numéricos a la práctica mientras no hayan sido medidos.
+
+\section{Objetivo general}
+Diseñar, simular e implementar físicamente un convertidor Boost capaz de elevar una tensión de entrada de \SI{10}{V} DC hasta aproximadamente \SI{17}{V} DC, entregando una potencia cercana a \SI{15}{W} con una frecuencia de conmutación de \SI{20}{kHz}.
+
+\section{Objetivos específicos}
+\begin{itemize}
+\item Calcular los parámetros principales del convertidor a partir de la tensión, potencia, frecuencia y rizado especificados.
+\item Identificar la topología, los componentes y las conexiones de la etapa de potencia en el esquemático LTspice.
+\item Analizar el ACS712, el compensador, el modulador PWM y el driver UCC21520 como etapa de control.
+\item Relacionar las ecuaciones de las fuentes comportamentales con la realimentación de tensión y corriente.
+\item Montar la etapa de control y la etapa de potencia siguiendo el esquema eléctrico, aplicando medidas de seguridad y verificaciones progresivas.
+\item Comparar las variables de simulación con las mediciones del circuito físico e identificar las causas de las diferencias.
+\end{itemize}
+
+\section{Especificaciones iniciales y parámetros del esquemático}
+Las condiciones objetivo del proyecto y los valores configurados en el modelo del circuito no son idénticos. La \cref{tab:especificaciones} separa ambos conjuntos para evitar atribuir al montaje valores que corresponden únicamente al diseño inicial.
+\begin{table}[H]
+\centering
+\caption{Especificaciones objetivo y parámetros extraídos del circuito LTspice.}
+\label{tab:especificaciones}
+\begin{tabular}{p{5.3cm}p{3.1cm}p{4.4cm}}
+\toprule
+\textbf{Parámetro} & \textbf{Objetivo} & \textbf{Valor configurado}\\
+\midrule
+Tensión de entrada, $V_{\mathrm{in}}$ & \SI{10}{V} & \texttt{Vpot=10 V}\\
+Tensión de salida, $V_{\mathrm{out}}$ & \SI{17}{V} & No fijada por una fuente ideal\\
+Potencia de salida, $P_{\mathrm{out}}$ & \SI{15}{W} & Debe verificarse experimentalmente\\
+Frecuencia nominal, $f_s$ & \SI{20}{kHz} & \texttt{Vsaw1}: período \SI{50}{\micro s}\\
+Rizado máximo especificado & \SI{5}{\percent} & Debe verificarse en simulación y montaje\\
+Carga, $R$ & \SI{19.3}{\ohm} & \texttt{R15=19.3 ohm}\\
+Inductor, $L$ & \SI{2.7}{mH} & \texttt{L2=2.7 mH}, $R_{\mathrm{ser}}=\SI{1}{m\ohm}$\\
+Condensador, $C$ & \SI{107}{\micro F} & \texttt{C5=22 micro F}\\
+MOSFET & IRFZ44N & \texttt{M2=IRFZ44N}\\
+Diodo & No especificado en el objetivo & \texttt{D2=MUR460}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La resistencia de carga se calculó mediante:
+\begin{equation}
+R=\frac{V_{\mathrm{out}}^2}{P_{\mathrm{out}}}
+\label{eq:carga}
+\end{equation}
+\[
+R=\frac{17^2}{15}\approx\SI{19.27}{ohm}.
+\]
+Por lo tanto, se seleccionó el valor comercial aproximado $R=\SI{19.3}{\ohm}$. Aunque en una etapa previa del diseño se consideró un condensador de \SI{107}{\micro F}, el circuito estudiado utiliza \SI{22}{\micro F} en la salida.
+
+\section{Diseño del convertidor}
+\subsection{Ciclo de trabajo}
+Para un convertidor Boost ideal se utiliza:
+\begin{equation}
+V_{\mathrm{out}}=\frac{V_{\mathrm{in}}}{1-D}.
+\label{eq:boost}
+\end{equation}
+Despejando y sustituyendo:
+\begin{equation}
+D=1-\frac{V_{\mathrm{in}}}{V_{\mathrm{out}}}=1-\frac{10}{17}\approx0.412.
+\label{eq:duty}
+\end{equation}
+El valor de referencia para la señal PWM fue $D\approx\SI{41.2}{\percent}$.
+
+\subsection{Frecuencia y señal PWM}
+La frecuencia nominal seleccionada fue $f_s=\SI{20}{kHz}$. El período correspondiente es:
+\begin{equation}
+T=\frac{1}{f_s}=\frac{1}{20000}=\SI{50}{\micro s}.
+\label{eq:periodo}
+\end{equation}
+El tiempo de conducción de referencia para el diseño ideal fue $T_{\mathrm{ON}}=0.412(\SI{50}{\micro s})\approx\SI{20.6}{\micro s}$. Para una configuración PWM de referencia se utilizó:
+\begin{verbatim}
+PULSE(0 10 0 10n 10n 20.6u 50u)
+\end{verbatim}
+Esta configuración genera niveles de \SI{0}{V} y \SI{10}{V}, un período de \SI{50}{\micro s} y un ciclo de trabajo aproximado de \SI{41.2}{\percent}. En el circuito analizado, la modulación se realiza mediante la señal diente de sierra, el comparador y el driver descritos en las subsecciones de control.
+
+\subsection{Corrientes de entrada y salida}
+\begin{equation}
+I_{\mathrm{out}}=\frac{P_{\mathrm{out}}}{V_{\mathrm{out}}}=\frac{15}{17}\approx\SI{0.882}{A}.
+\label{eq:iout}
+\end{equation}
+\begin{equation}
+I_{\mathrm{in}}=\frac{P_{\mathrm{out}}}{V_{\mathrm{in}}}=\frac{15}{10}=\SI{1.5}{A}.
+\label{eq:iin}
+\end{equation}
+En un circuito real esta corriente puede ser mayor debido a las pérdidas del MOSFET, el diodo, el inductor y los demás componentes.
+
+\subsection{Selección del inductor}
+Considerando inicialmente un rizado de corriente del \SI{5}{\percent}:
+\[
+\Delta I_L=0.05(1.5)=\SI{0.075}{A}.
+\]
+Para el convertidor Boost:
+\begin{equation}
+L=\frac{V_{\mathrm{in}}D}{f_s\Delta I_L}=\frac{10(0.412)}{20000(0.075)}\approx\SI{2.75}{mH}.
+\label{eq:inductor}
+\end{equation}
+Se seleccionó el valor comercial $L=\SI{2.7}{mH}$.
+
+\subsection{Selección del condensador}
+El valor teórico inicial fue cercano a \SI{21.4}{\micro F}, considerando un rizado de tensión del \SI{5}{\percent}. El condensador del circuito es de \SI{22}{\micro F} entre el nodo de salida y la referencia de potencia. Por tanto, cualquier rizado debe medirse tanto en la simulación como en el montaje físico y no suponerse a partir del valor teórico.
+
+\section{Topología y funcionamiento del convertidor}
+La etapa de potencia está formada por la fuente de entrada, el inductor, el nodo de conmutación, el MOSFET, el diodo, el condensador y la carga. La estructura se representa en la \cref{fig:boost}.
+\begin{figure}[H]
+\centering
+\begin{circuitikz}[american voltages]
+\draw (0,0) node[ground]{} to[battery1,l=$V_{\mathrm{in}}=\SI{10}{V}$] (0,3) to[L,l=$L2=\SI{2.7}{mH}$] (3,3) -- (5,3) to[D,l=$D2$] (7,3) -- (9,3) node[right]{$V_{\mathrm{out}}$};
+\draw (5,3) to[short,*-] (5,1.5) to[mosfet,l_=M2\ (IRFZ44N)] (5,0) node[ground]{};
+\draw (9,3) to[C,l=$C5=\SI{22}{\micro F}$] (9,0) node[ground]{};
+\draw (9,1.5) to[R,l=$R15=\SI{19.3}{\ohm}$] (11,1.5) node[ground]{};
+\draw[->] (4,0.8) -- (5,0.8) node[midway,below]{PWM};
+\end{circuitikz}
+\caption{Esquema funcional del convertidor Boost simulado.}
+\label{fig:boost}
+\end{figure}
+
+El MOSFET se controla desde el nodo de compuerta a través de una resistencia serie de \SI{10}{\ohm}; una resistencia de \SI{10}{k\ohm} entre compuerta y fuente favorece su apagado cuando no hay excitación. El inductor tiene una resistencia serie de \SI{1}{m\ohm}. El diodo utilizado es un MUR460. La tensión de salida, la potencia y el ciclo de trabajo efectivo deben confirmarse mediante las mediciones de simulación y del montaje.
+
+\subsection{Etapa de potencia}
+La fuente de entrada es de \SI{10}{V}. La corriente atraviesa el sensor ACS712 y continúa por el inductor hasta el nodo de conmutación. Cuando el MOSFET conduce, la energía se almacena en el inductor y el nodo de conmutación queda conectado a la referencia de potencia. Cuando el MOSFET se apaga, la corriente del inductor se desvía por el diodo hacia la salida, donde se encuentran el condensador y la carga.
+
+El circuito permite identificar los siguientes valores eléctricos:
+\begin{itemize}
+	\item $L2=\SI{2.7}{mH}$ con $R_{\mathrm{ser}}=\SI{1}{m\ohm}$.
+	\item $M2=\text{IRFZ44N}$ como interruptor de canal N de lado bajo.
+	\item $D2=\text{MUR460}$ entre \texttt{N002} y \texttt{N003}.
+	\item $C5=\SI{22}{\micro F}$ y $R15=\SI{19.3}{\ohm}$ entre \texttt{N003} y \texttt{COM}.
+\end{itemize}
+La topología es, por tanto, la de un Boost convencional. La relación ideal $V_{\mathrm{out}}=V_{\mathrm{in}}/(1-D)$ solo permite estimar el punto de operación; el valor real depende de la señal que llega al gate, de la caída del MUR460, de las pérdidas del IRFZ44N y del régimen transitorio.
+
+\subsection{Sensor de corriente ACS712}
+El sensor ACS712 utiliza los terminales \texttt{I+}, \texttt{I-}, \texttt{Filter}, \texttt{Out}, \texttt{V+} y \texttt{V-}. Sus conexiones son:
+\[
+XU1\;ip+\;ip-\;N013\;asc\;5v\;0.
+\]
+Por tanto, el sensor está alimentado entre \SI{5}{V} y \texttt{0}, y su salida analógica es el nodo \texttt{asc}. El modelo selecciona \texttt{.param gain=185m}, correspondiente a una sensibilidad de \SI{185}{mV/A} del modelo usado.
+
+La librería representa el camino de medida mediante una fuente de tensión de corriente primaria \texttt{V1}, una fuente dependiente de corriente \texttt{F1}, un retardo de transmisión de \SI{1}{\micro s}, la resistencia de filtro de \SI{1.7}{k\ohm}, el condensador de \SI{1.3}{\micro F} y una resistencia de salida de \SI{50}{\ohm}. También incluye una fuente dependiente que genera el nivel de referencia de salida mediante la alimentación. Estos elementos forman el modelo eléctrico del sensor; no son componentes adicionales dibujados en el esquemático.
+
+El filtrado externo está dado por \texttt{C1=1 nF} entre \texttt{N013} (\texttt{Filter}) y tierra. Sin embargo, \texttt{B1} utiliza explícitamente el nodo \texttt{asc} (\texttt{Out}) y no \texttt{N013}, de modo que ese condensador no aparece en la ecuación de realimentación que controla el PWM. La fuente comportamental \texttt{B1} está definida como:
+\begin{equation}
+V_{N004}=\left(V_{asc}-\frac{V_{5v}}{2}\right)5.405.
+\label{eq:acs_acondicionamiento}
+\end{equation}
+Con $V_{5v}=\SI{5}{V}$, la ecuación resta el punto medio de \SI{2.5}{V} y multiplica la componente de corriente por $5.405$. Para la sensibilidad configurada del ACS712, el producto aproximado $0.185\times5.405\approx1$ hace que \texttt{N004} represente aproximadamente \SI{1}{V/A}, sujeto al comportamiento dinámico del modelo. El circuito no permite afirmar una corriente máxima o una precisión experimental sin la hoja de datos y sin ejecutar la simulación.
+
+\subsection{Driver UCC21520 y disparo del MOSFET}
+El driver UCC21520 tiene sus entradas lógicas conectadas de modo que el canal de control recibe la señal PWM, mientras que sus alimentaciones de potencia son de \SI{15}{V}. La salida de excitación llega a la compuerta del IRFZ44N a través de una resistencia de \SI{10}{\ohm}; una resistencia de \SI{10}{k\ohm} proporciona el apagado cuando no hay excitación.
+
+El modelo del driver incluye retardos de propagación de \SI{14}{ns} en las entradas, tiempos internos de transición, UVLO para la alimentación lógica y de potencia, control de tiempo muerto, limitación de corriente de salida y etapas CMOS de salida. En el modelo, las salidas comportamentales producen aproximadamente \SI{12}{V} cuando la señal interna de disparo supera \SI{2.5}{V} y \SI{0}{V} en caso contrario. La alimentación de salida del driver es \SI{15}{V}; por ello, la amplitud exacta del gate en este circuito no debe confundirse con la amplitud de \SI{10}{V} de una fuente PWM de referencia.
+
+El tiempo muerto y el comportamiento de la salida complementaria no pueden determinarse numéricamente sin medir las señales en el circuito. Sí puede afirmarse que el canal de entrada PWM es el camino de control que finalmente acciona el MOSFET.
+
+\subsection{Generador, compensador y modulador PWM}
+La señal etiquetada como diente de sierra está definida en el esquemático por:
+\begin{equation}
+V_{saw}=\operatorname{PULSE}(0,1,0,\SI{1}{fs},\SI{1}{ps},\SI{1}{ps},\SI{50}{\micro s}).
+\label{eq:saw}
+\end{equation}
+El período de \SI{50}{\micro s} corresponde a \SI{20}{kHz}. No obstante, los tiempos de subida, duración en nivel alto y bajada son de aproximadamente \SI{1}{fs}, \SI{1}{ps} y \SI{1}{ps}; la fuente configurada no genera una rampa lineal de 0 a 1, sino un pulso extremadamente estrecho. Por ello, el comportamiento del PWM debe verificarse con el osciloscopio en la simulación y en el circuito físico.
+
+El comparador comportamental \texttt{B2} se define como:
+\begin{equation}
+V_{N001}=5\,\bigl(V_d>V_{saw}\bigr).
+\label{eq:comparador}
+\end{equation}
+LTspice interpreta la condición verdadera como 1 y la falsa como 0, por lo que \texttt{B2} entrega niveles de aproximadamente 0 o \SI{5}{V}. Como $d$ está limitado entre 0 y 1, con la fuente actual el comparador permanece normalmente en nivel alto cuando $V_{saw}=0$ y solo cambia durante el pulso estrecho. No es válido afirmar que el duty obtenido sea $d$ sin ejecutar el circuito o sustituir \texttt{Vsaw1} por una rampa.
+
+El setpoint está definido por \texttt{V3=1.5 V}. La fuente controlada \texttt{E1} recibe el error entre \texttt{setpoint} y la realimentación \texttt{N004} y aplica la función:
+\begin{equation}
+H(s)=\frac{46773s+24490000}{(s+0.1)(s+62832)}.
+\label{eq:compensador}
+\end{equation}
+Así, $V_{ec}=H(s)(V_{setpoint}-V_{N004})$. La función tiene un cero aproximado en $s=-523.4\ \si{rad/s}$ y polos en $s=-0.1\ \si{rad/s}$ y $s=-62832\ \si{rad/s}$, equivalente este último a aproximadamente \SI{10}{kHz}. Finalmente, \texttt{B4} limita la salida del compensador:
+\begin{equation}
+V_d=\operatorname{limit}(V_{ec},0,1).
+\label{eq:limitador}
+\end{equation}
+Por tanto, \texttt{d} es una orden normalizada entre 0 y 1, pero su relación final con el tiempo de conducción depende de la forma efectiva de \texttt{Vsaw1}.
+
+\subsection{Interpretación del lazo de control}
+El lazo implementado puede seguirse como:
+\[
+\text{corriente de entrada}\rightarrow\text{ACS712}\rightarrow\text{B1}\rightarrow N004
+\rightarrow\text{E1}\rightarrow\text{B4}\rightarrow d
+\rightarrow\text{B2}\rightarrow N001\rightarrow\text{UCC21520}\rightarrow M2.
+\]
+El valor de referencia de \SI{1.5}{V} actúa como setpoint y la señal acondicionada del ACS712 como realimentación de corriente. El lazo no toma directamente la tensión de salida como señal de realimentación; por ello, la tensión sobre el condensador puede cambiar como consecuencia del control de corriente y de la carga. Esta característica debe verificarse durante el armado físico.
+
+\section{Componentes utilizados en la simulación}
+\begin{table}[H]
+\centering
+\caption{Componentes identificados en la simulación.}
+\label{tab:componentes}
+\begin{tabular}{lll}
+\toprule
+\textbf{Componente} & \textbf{Referencia o valor} & \textbf{Función}\\
+\midrule
+MOSFET & IRFZ44N (\texttt{M2}) & Interruptor de canal N\\
+Diodo & MUR460 (\texttt{D2}) & Transferencia de energía al bus de salida\\
+Inductor & \SI{2.7}{mH} (\texttt{L2}) & Almacenamiento de energía; $R_{\mathrm{ser}}=\SI{1}{m\ohm}$\\
+Condensador & \SI{22}{\micro F} (\texttt{C5}) & Filtrado de la salida\\
+Carga & \SI{19.3}{\ohm} (\texttt{R15}) & Demanda de potencia\\
+Driver & UCC21520 (\texttt{U2}) & Acondicionamiento y excitación del gate\\
+Sensor & ACS712 (\texttt{U1}) & Medición aislada de corriente en la entrada\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El MUR460 es el diodo utilizado en la etapa de potencia. No se cuenta con una caracterización adicional de sus pérdidas ni de su recuperación inversa; por ello, esos parámetros deben verificarse en la selección del componente físico mediante su hoja de datos y mediciones de temperatura.
+
+\section{Resultados de simulación y análisis}
+\subsection{Tensión de salida y rizado}
+Como referencia del diseño inicial se consideraron $V_{\max}=\SI{17.15}{V}$ y $V_{\min}=\SI{17.01}{V}$, valores asociados a una configuración diferente del condensador y del control. Por tanto, no es válido presentar ese rizado como resultado de la configuración actual. El cálculo de referencia es:
+\begin{equation}
+\Delta V=17.15-17.01=\SI{0.14}{V}.
+\label{eq:rizado}
+\end{equation}
+\begin{equation}
+\%\,\mathrm{Ripple}=\frac{0.14}{17}(100)\approx\SI{0.82}{\percent}.
+\label{eq:porcentaje_rizado}
+\end{equation}
+El valor de \SI{0.82}{\percent} corresponde únicamente a esa referencia inicial. El rizado de la configuración actual debe obtenerse midiendo la tensión de salida en la simulación y en el montaje físico.
+
+\subsection{Potencia de salida}
+\begin{equation}
+P_{\mathrm{out}}=V_{\mathrm{out}}I_{\mathrm{out}}=\frac{V_{\mathrm{out}}^2}{R}.
+\label{eq:pout}
+\end{equation}
+Para aproximadamente \SI{17}{V} y \SI{19.3}{ohm}:
+\[
+P_{\mathrm{out}}=\frac{17^2}{19.3}\approx\SI{14.97}{W}.
+\]
+Este valor es cercano a los \SI{15}{W} especificados.
+
+\subsection{Factor de potencia y eficiencia}
+El factor de potencia no es equivalente a la eficiencia. En este proyecto la entrada es de \SI{10}{V} DC, por lo que el concepto de factor de potencia no se aplica de la misma forma que en un sistema alimentado directamente desde una red de corriente alterna. La eficiencia debe calcularse mediante:
+\begin{equation}
+\eta=\frac{P_{\mathrm{out}}}{P_{\mathrm{in}}}\times100\%.
+\label{eq:eficiencia}
+\end{equation}
+La potencia de entrada no está reportada; por tanto, no es posible dar un valor numérico de eficiencia sin realizar la medición. También quedan pendientes la medición del rizado de corriente y las pérdidas de los componentes.
+
+\subsection{Configuración de la simulación}
+La simulación transitoria se configura para observar hasta \SI{60}{ms}, con las tolerancias numéricas ajustadas para el análisis. Estos parámetros describen el método de cálculo, pero no constituyen mediciones del circuito. Para completar el análisis se deben observar al menos la tensión de salida, la corriente del inductor, la tensión gate-source del MOSFET, la salida del ACS712, la señal acondicionada, la orden de control y la señal PWM.
+
+\section{Problemas encontrados y correcciones}
+\begin{table}[H]
+\centering
+\caption{Problemas identificados durante la simulación.}
+\label{tab:problemas}
+\begin{tabular}{p{4.2cm}p{8.5cm}}
+\toprule
+\textbf{Problema} & \textbf{Corrección aplicada}\\
+\midrule
+MOSFET de canal incorrecto & Se reemplazó el MOSFET de canal P por el MOSFET de canal N IRFZ44N.\\
+PWM incorrecto & Se cambió la fuente inicial por \texttt{PULSE(0 10 0 10n 10n 20.6u 50u)}, correspondiente al ciclo calculado.\\
+Tiempo de simulación insuficiente & Se aumentó el tiempo de simulación; se propuso \texttt{.tran 30m} para observar el arranque y el régimen permanente.\\
+Tensión de salida inesperada & Los valores cercanos a \SI{0.3}{V} y \SI{11.2}{V} se asociaron a la configuración del MOSFET y posteriormente a la señal de control.\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Armado físico y validación experimental}
+El armado físico tiene como objetivo verificar que el comportamiento del convertidor simulado se mantenga al implementar los componentes reales. Las mediciones deben realizarse de forma progresiva, comenzando por la etapa de control y manteniendo desconectada la etapa de potencia hasta comprobar las señales de mando.
+
+\subsection{Preparación y selección de componentes}
+Antes del montaje se deben comprobar la polaridad y el estado de cada componente. El inductor debe soportar la corriente máxima prevista sin saturarse y el condensador debe tener una tensión nominal superior a la tensión de salida; se recomienda un margen mínimo de \SI{25}{V}. El MOSFET debe verificarse para la tensión $V_{\mathrm{DS}}$, la corriente de operación, la tensión $V_{\mathrm{GS}}$ y la disipación térmica. El diodo debe verificarse para tensión inversa, corriente directa, recuperación y disipación.
+
+La resistencia de compuerta de \SI{10}{\ohm} debe instalarse próxima al MOSFET y la resistencia de \emph{pull-down} de \SI{10}{k\ohm} debe conectar compuerta y fuente. Las conexiones de potencia deben ser cortas y compactas, especialmente el recorrido formado por el condensador, el MOSFET, el inductor y el diodo. Esto reduce inductancias parásitas, interferencias y sobretensiones.
+
+\subsection{Procedimiento de montaje}
+\begin{enumerate}
+	\item Montar inicialmente la alimentación de control, el ACS712, el acondicionamiento, el compensador, el comparador y el UCC21520 sin conectar la fuente de potencia del Boost.
+	\item Alimentar la lógica con \SI{5}{V} y el driver con \SI{15}{V}, verificando las referencias de tierra y la ausencia de cortocircuitos.
+	\item Aplicar la señal de control y comprobar con el osciloscopio la señal PWM, la salida del driver y la tensión gate-source del MOSFET.
+	\item Conectar el inductor, el diodo, el condensador y la carga respetando la polaridad y la topología del esquema.
+	\item Utilizar una fuente DC con limitación de corriente y comenzar con una tensión reducida o con un límite de corriente bajo.
+	\item Incrementar progresivamente la tensión de entrada hasta \SI{10}{V}, vigilando la corriente, la tensión de salida y la temperatura del MOSFET, el diodo y el inductor.
+	\item Registrar las formas de onda y los valores de régimen permanente una vez que el circuito opere de manera estable.
+\end{enumerate}
+
+No se debe conectar ni desconectar el inductor, el diodo o el condensador con la fuente energizada. Antes de modificar el cableado se deben descargar los condensadores y retirar la alimentación.
+
+\subsection{Mediciones requeridas}
+Las mediciones deben realizarse en los mismos puntos utilizados para interpretar la simulación. La \cref{tab:mediciones} organiza las variables que se deben registrar.
+\begin{table}[H]
+\centering
+\caption{Variables para la comparación entre simulación y montaje físico.}
+\label{tab:mediciones}
+\begin{tabular}{p{5.2cm}p{3.4cm}p{3.4cm}}
+\toprule
+\textbf{Variable} & \textbf{Simulación} & \textbf{Montaje}\\
+\midrule
+Tensión de entrada $V_{\mathrm{in}}$ & Pendiente & Pendiente\\
+Tensión de salida $V_{\mathrm{out}}$ & Pendiente & Pendiente\\
+Corriente de entrada $I_{\mathrm{in}}$ & Pendiente & Pendiente\\
+Corriente de salida $I_{\mathrm{out}}$ & Pendiente & Pendiente\\
+Frecuencia y duty del PWM & Pendiente & Pendiente\\
+Tensión gate-source del MOSFET & Pendiente & Pendiente\\
+Rizado de tensión de salida & Pendiente & Pendiente\\
+Rizado de corriente del inductor & Pendiente & Pendiente\\
+Temperatura de los componentes & No aplica & Pendiente\\
+Potencia de entrada, salida y eficiencia & Pendiente & Pendiente\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La comparación debe realizarse utilizando las mismas condiciones de operación: tensión de entrada, carga, frecuencia de conmutación y tiempo de observación. Para cada variable se debe indicar el valor medio, el valor máximo y mínimo cuando corresponda, y el error relativo:
+\begin{equation}
+\varepsilon_x=\frac{|x_{\mathrm{físico}}-x_{\mathrm{simulado}}|}{|x_{\mathrm{simulado}}|}\times100\%.
+\label{eq:error_comparacion}
+\end{equation}
+Un resultado experimental no debe reemplazarse por el valor esperado. Si todavía no se ha realizado una medición, debe conservarse como pendiente.
+
+\subsection{Criterios de validación}
+La simulación y el montaje se considerarán coherentes cuando la tensión de salida, la frecuencia de conmutación, el duty, las corrientes y las formas de onda presenten el mismo comportamiento cualitativo y diferencias compatibles con las pérdidas y tolerancias de los componentes. Las diferencias deben analizarse considerando la caída real del diodo, $R_{\mathrm{DS(on)}}$ del MOSFET, resistencia serie del inductor, tolerancia del condensador, retardos del driver, disposición física y limitación de la fuente.
+
+\section{Conclusiones}
+\begin{itemize}
+\item El diseño ideal del convertidor Boost establece un ciclo de trabajo de aproximadamente \SI{41.2}{\percent} para elevar \SI{10}{V} hasta \SI{17}{V} a \SI{20}{kHz}.
+\item El circuito configura \SI{2.7}{mH} para el inductor, \SI{22}{\micro F} para el condensador, MUR460 para el diodo y una carga de \SI{19.3}{\ohm}; estos son los valores que deben utilizarse para comparar la simulación con el montaje físico.
+\item El control está basado en la corriente medida por el ACS712 y no en una realimentación directa de la tensión de salida, porque el nodo \texttt{N003} no aparece conectado al acondicionador ni al compensador.
+\item La fuente denominada diente de sierra tiene una duración en alto de \SI{1}{ps}, por lo que la configuración actual no implementa una rampa convencional y el duty efectivo debe verificarse mediante las formas de onda.
+\item No se dispone de datos de potencia de entrada, eficiencia, rizado de corriente ni resultados de implementación física; por ello, estas magnitudes quedan pendientes de verificación experimental.
+\end{itemize}
+
+\end{document}
