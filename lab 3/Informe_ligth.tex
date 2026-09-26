@@ -1,0 +1,298 @@
+\documentclass[12pt]{article}
+
+\usepackage[spanish]{babel}
+\addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{setspace}
+\setstretch{1.15}
+\usepackage{xcolor}
+\definecolor{tituloazul}{RGB}{31,100,160}
+\usepackage[colorlinks=true,linkcolor=tituloazul,citecolor=tituloazul,urlcolor=tituloazul]{hyperref}
+\usepackage{titlesec}
+\titleformat{\section}{\color{tituloazul}\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\color{tituloazul}\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\color{tituloazul}\small\bfseries}{\thesubsubsection}{0.5em}{}
+\titlespacing{\section}{0pt}{12pt}{6pt}
+\titlespacing{\subsection}{0pt}{8pt}{4pt}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textcolor{tituloazul}{Electrónica de Potencia}}
+\fancyhead[R]{\textcolor{tituloazul}{Laboratorio 3}}
+\fancyfoot[C]{\thepage}
+\setlength{\headheight}{15pt}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\captionsetup{
+	skip=5pt,
+	font=small
+}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\setlist{
+	topsep=5pt,
+	itemsep=3pt,
+	parsep=2pt
+}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\sisetup{per-mode=symbol,detect-all}
+\usepackage[spanish,capitalize,nameinlink]{cleveref}
+\crefname{figure}{figura}{figuras}
+\Crefname{figure}{Figura}{Figuras}
+\crefname{equation}{ecuación}{ecuaciones}
+\Crefname{equation}{Ecuación}{Ecuaciones}
+\usepackage[siunitx]{circuitikz}
+\usetikzlibrary{babel}
+
+\newcommand{\estudiantes}{Jose Leonardo Perez Poveda, Sergio Hoyos Mejía, Alberto Mario Salazar Callejas}
+
+\begin{document}
+\vspace*{-1cm}
+\begin{center}
+{\Huge
+\textcolor{tituloazul}{
+\textbf{Laboratorio 3}\\
+Diseño, simulación y validación experimental\\
+de un convertidor Boost
+}}
+
+\vspace{0.2cm}
+{\textbf{\estudiantes}}
+
+\vspace{0.2cm}
+\textit{Ingeniería Electrónica}\\
+\textit{Universidad de Antioquia}\\
+\textit{Medellín-Colombia}
+\end{center}
+
+\vspace{0.3cm}
+
+\noindent\textcolor{tituloazul}{\textbf{Resumen:}} Se diseñó, simuló e implementó un convertidor Boost con entrada de \SI{10}{V} DC, frecuencia nominal de \SI{20}{kHz}, inductor de \SI{2.7}{mH}, condensador de \SI{22}{\micro F}, diodo MUR460, MOSFET IRFZ44N y carga de \SI{19.3}{\ohm}. El control utiliza un sensor ACS712, un compensador, un comparador PWM y un driver UCC21520. Las imágenes de simulación y montaje permiten verificar la relación entre el duty cycle aplicado, la señal de compuerta y la respuesta de la carga.
+
+\section{Objetivos y especificaciones}
+El objetivo es elevar idealmente \SI{10}{V} hasta aproximadamente \SI{17}{V}, con una potencia cercana a \SI{15}{W}, y comparar el comportamiento simulado con el circuito físico.
+
+\begin{table}[H]
+\centering
+\caption{Parámetros principales del convertidor.}
+\begin{tabular}{ll}
+\toprule
+Tensión de entrada & \SI{10}{V} DC\\
+Tensión de salida objetivo & \SI{17}{V}\\
+Potencia objetivo & \SI{15}{W}\\
+Frecuencia nominal & \SI{20}{kHz}\\
+Carga & \SI{19.3}{\ohm}\\
+Inductor & \SI{2.7}{mH}, $R_{\mathrm{ser}}=\SI{1}{m\ohm}$\\
+Condensador & \SI{22}{\micro F}\\
+Interruptor y diodo & IRFZ44N y MUR460\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Para la carga se utilizó:
+\begin{equation}
+R=\frac{V_{\mathrm{out}}^2}{P_{\mathrm{out}}}
+ =\frac{17^2}{15}\approx\SI{19.27}{\ohm}\approx\SI{19.3}{\ohm}.
+\label{eq:carga}
+\end{equation}
+
+\section{Diseño y topología}
+Para un Boost ideal:
+\begin{equation}
+V_{\mathrm{out}}=\frac{V_{\mathrm{in}}}{1-D},\qquad
+D=1-\frac{V_{\mathrm{in}}}{V_{\mathrm{out}}}
+ =1-\frac{10}{17}\approx0.412.
+\label{eq:duty}
+\end{equation}
+El ciclo de trabajo de referencia es $D\approx\SI{41.2}{\percent}$. Con $f_s=\SI{20}{kHz}$, el período es:
+\begin{equation}
+T=\frac{1}{f_s}=\SI{50}{\micro s},\qquad
+T_{\mathrm{ON}}=DT\approx\SI{20.6}{\micro s}.
+\label{eq:periodo}
+\end{equation}
+
+El inductor almacena energía durante la conducción del MOSFET. Al apagarlo, la corriente se transfiere mediante el MUR460 al condensador y a la carga. La corriente nominal de salida y la corriente de entrada ideal son:
+\begin{equation}
+I_{\mathrm{out}}=\frac{15}{17}\approx\SI{0.882}{A},\qquad
+I_{\mathrm{in,ideal}}=\frac{15}{10}=\SI{1.5}{A}.
+\label{eq:corrientes}
+\end{equation}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth,height=4.8cm,keepaspectratio]{\detokenize{images/simulacion/circuito_boost.png}}
+\caption{Circuito Boost completo utilizado en la simulación.}
+\label{fig:circuito}
+\end{figure}
+
+La \cref{fig:circuito} muestra la conexión de la etapa de potencia y del control. El MOSFET es de lado bajo; la compuerta utiliza una resistencia serie de \SI{10}{\ohm} y una resistencia de apagado de \SI{10}{k\ohm} entre compuerta y fuente.
+
+\section{Control y simulación}
+El ACS712 mide la corriente de entrada y entrega una señal centrada aproximadamente en la mitad de su alimentación. Con una sensibilidad de \SI{185}{mV/A}, el acondicionamiento implementado resta \SI{2.5}{V} y aplica una ganancia de $5.405$:
+\begin{equation}
+V_{\mathrm{sens}}=\left(V_{\mathrm{ACS}}-\frac{V_{5}}{2}\right)5.405.
+\label{eq:acs}
+\end{equation}
+La señal acondicionada se compara con un setpoint de \SI{1.5}{V}. El compensador utilizado tiene la función:
+\begin{equation}
+H(s)=\frac{46773s+24490000}{(s+0.1)(s+62832)}.
+\label{eq:compensador}
+\end{equation}
+Su salida se limita al intervalo $0\leq d\leq1$ y posteriormente se compara con una señal periódica para producir el PWM. El driver UCC21520 recibe la señal lógica, se alimenta con \SI{15}{V} y entrega la excitación de compuerta al IRFZ44N. El modelo considera retardos de propagación cercanos a \SI{14}{ns}, UVLO y control de tiempo muerto.
+
+La fuente periódica tiene período de \SI{50}{\micro s}; sin embargo, sus tiempos de subida, nivel alto y bajada son extremadamente pequeños, por lo que la señal configurada se comporta como un pulso estrecho y no como una rampa lineal convencional. Por esta razón, el duty efectivo debe verificarse observando la forma de onda.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=3.6cm,keepaspectratio]{\detokenize{images/simulacion/senal_pwm(Cian)_vs_salida_Ucc21520(DarkBlue).png}}
+\caption{PWM y salida del driver.}
+\label{fig:sim_driver}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=3.6cm,keepaspectratio]{\detokenize{images/simulacion/senal_pwm(Cian)_vs_salida_Ucc21520(DarkBlue)_vs_respuesta_salida_en carga(Green).png}}
+\caption{PWM, driver y carga.}
+\label{fig:sim_carga}
+\end{subfigure}
+\caption{Resultados de simulación del control y de la respuesta del convertidor.}
+\label{fig:simulacion_control}
+\end{figure}
+
+En la \cref{fig:simulacion_control}, la señal cian corresponde al PWM antes del driver, la azul oscuro a la salida del UCC21520 y la verde a la tensión en la carga. La comparación muestra cómo el driver acondiciona la señal de control antes de aplicarla al MOSFET y cómo la carga responde a la conmutación. Estas gráficas corresponden a simulación, no a mediciones físicas.
+
+\section{Resultados experimentales}
+\subsection{Sensado de corriente y señal de compuerta}
+La señal medida a la salida del ACS712 se muestra en la \cref{fig:acs712}. Esta señal se utiliza como realimentación para el acondicionamiento y el control de corriente del convertidor.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=3.2cm,keepaspectratio]{\detokenize{images/montaje/ACS712_out.png}}
+\caption{Salida del ACS712.}
+\label{fig:acs712}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=3.2cm,keepaspectratio]{\detokenize{images/montaje/IRFZ44N_D_30.png}}
+\caption{Gate-Source al 30\%.}
+\label{fig:gate30}
+\end{subfigure}
+\\[4pt]
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=3.2cm,keepaspectratio]{\detokenize{images/montaje/IRFZ44N_D_40.png}}
+\caption{Gate-Source al 40\%.}
+\label{fig:gate40}
+\end{subfigure}
+\caption{Mediciones experimentales del sensado y de la compuerta del MOSFET.}
+\label{fig:sensado_gate}
+\end{figure}
+
+Las señales Gate-Source de la \cref{fig:sensado_gate} conservan la forma pulsada del PWM. Al pasar de 30\% a 40\%, aumenta el intervalo de conducción del MOSFET. La amplitud y los tiempos de transición dependen del driver, la resistencia de compuerta y las capacitancias parásitas del montaje.
+
+\subsection{PWM y respuesta de carga}
+Las señales de entrada y sus respuestas de tensión se organizan por duty cycle en la \cref{fig:pares_pwm}. En cada fila, la imagen izquierda corresponde al PWM medido a la salida del ESP32 y la imagen derecha a la tensión medida en la carga. Esta disposición permite relacionar directamente la señal aplicada con la respuesta experimental.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=2.8cm,keepaspectratio]{\detokenize{images/montaje/Pwm_D_10.png}}
+\caption{PWM, 10\%.}
+\label{fig:pwm10}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=4.0cm,keepaspectratio]{\detokenize{images/montaje/Salida_Pwm_D_10.png}}
+\caption{Carga, 10\%.}
+\label{fig:salida10}
+\end{subfigure}
+
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=2.8cm,keepaspectratio]{\detokenize{images/montaje/Pwm_D_30.png}}
+\caption{PWM, 30\%.}
+\label{fig:pwm30}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=4.0cm,keepaspectratio]{\detokenize{images/montaje/Salida_Pwm_D_30.png}}
+\caption{Carga, 30\%.}
+\label{fig:salida30}
+\end{subfigure}
+
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=2.8cm,keepaspectratio]{\detokenize{images/montaje/Pwm_D_40.png}}
+\caption{PWM, 40\%.}
+\label{fig:pwm40}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=4.0cm,keepaspectratio]{\detokenize{images/montaje/Salida_Pwm_D_40.png}}
+\caption{Carga, 40\%.}
+\label{fig:salida40}
+\end{subfigure}
+
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=2.8cm,keepaspectratio]{\detokenize{images/montaje/Pwm_D_50.png}}
+\caption{PWM, 50\%.}
+\label{fig:pwm50}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth,height=4.0cm,keepaspectratio]{\detokenize{images/montaje/Salida_Pwm_D_50.png}}
+\caption{Carga, 50\%.}
+\label{fig:salida50}
+\end{subfigure}
+\caption{Pares experimentales de señal PWM y tensión de salida para distintos duty cycles.}
+\label{fig:pares_pwm}
+\end{figure}
+
+La \cref{fig:pares_pwm} muestra que el intervalo de nivel alto del PWM aumenta de 10\% a 50\%, mientras la frecuencia permanece aproximadamente constante. Las capturas de la columna derecha muestran las lecturas de tensión obtenidas en la carga para cada duty cycle y permiten relacionar directamente el valor aplicado con la respuesta experimental.
+
+\section{Problemas encontrados y correcciones}
+Durante el desarrollo se identificaron los problemas de la \cref{tab:problemas}. Las correcciones permitieron continuar desde la simulación hasta la validación experimental.
+
+\begin{table}[H]
+\centering
+\caption{Problemas encontrados y correcciones aplicadas.}
+\label{tab:problemas}
+\begin{tabular}{p{4.5cm}p{8cm}}
+\toprule
+\textbf{Problema} & \textbf{Corrección}\\
+\midrule
+MOSFET de canal incorrecto & Se reemplazó el dispositivo de canal P por el MOSFET de canal N IRFZ44N, requerido por la configuración de conmutación de lado bajo.\\
+Señal PWM incorrecta & Se ajustaron la frecuencia y el tiempo de conducción para trabajar con \SI{20}{kHz} y el duty de referencia calculado.\\
+Tiempo de simulación insuficiente & Se amplió el tiempo de análisis transitorio para observar el arranque y el régimen permanente del convertidor.\\
+Tensión de salida inesperada & Se revisaron el tipo de MOSFET y la señal de control, que eran las causas de las primeras tensiones de salida inferiores a la esperada.\\
+Calibración del ACS712 & Se conectó el sensor en serie con una resistencia de \SI{50}{\ohm}, la fuente y el amperímetro. Se comparó la corriente medida por el amperímetro y la fuente con la corriente calculada por el ESP32, ajustando la sensibilidad y el offset del programa hasta obtener valores coincidentes.\\
+Ruido en la señal del ACS712 & Se identificó que el ESP32 no proporciona una alimentación de \SI{5}{V} suficientemente estable para el sensor. Se corrigió utilizando una alimentación regulada de \SI{5}{V} para el ACS712 y conservando una referencia común con el sistema de control.\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Comparación y conclusiones}
+La comparación debe realizarse con la misma tensión de entrada, carga y frecuencia. Las diferencias entre simulación y montaje pueden deberse a la caída real del diodo, $R_{\mathrm{DS(on)}}$ del MOSFET, resistencia serie del inductor, tolerancia del condensador, retardos del driver, cableado y limitación de la fuente.
+
+El diseño ideal establece un duty de aproximadamente \SI{41.2}{\percent} para elevar \SI{10}{V} a \SI{17}{V}. La simulación permite observar la cadena PWM--driver--carga, mientras que las mediciones experimentales confirman el aumento del tiempo de conducción en la señal del ESP32 y en la compuerta del MOSFET para los duty cycles estudiados. Las lecturas de tensión de salida se presentan junto a sus respectivas señales PWM.
+
+La comparación entre simulación y montaje se realiza considerando la tensión de entrada, la carga y la frecuencia de conmutación. Las diferencias observadas se explican por la caída real del diodo, $R_{\mathrm{DS(on)}}$ del MOSFET, la resistencia serie del inductor, la tolerancia del condensador, los retardos del driver y el cableado del montaje.
+
+\end{document}

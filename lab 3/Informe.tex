@@ -50,7 +50,7 @@
 \begin{document}
 \vspace*{-1cm}
 \begin{center}
-{\Huge\textcolor{tituloazul}{\textbf{Laboratorio 3}\\Diseño y simulación de un convertidor Boost}}
+{\Huge\textcolor{tituloazul}{\textbf{Laboratorio 3}\\Diseño, simulación y validación experimental de un convertidor Boost}}
 \vspace{0.2cm}
 
 {\textbf{\estudiantes}}
@@ -180,6 +180,14 @@ La etapa de potencia está formada por la fuente de entrada, el inductor, el nod
 
 El MOSFET se controla desde el nodo de compuerta a través de una resistencia serie de \SI{10}{\ohm}; una resistencia de \SI{10}{k\ohm} entre compuerta y fuente favorece su apagado cuando no hay excitación. El inductor tiene una resistencia serie de \SI{1}{m\ohm}. El diodo utilizado es un MUR460. La tensión de salida, la potencia y el ciclo de trabajo efectivo deben confirmarse mediante las mediciones de simulación y del montaje.
 
+La implementación completa de la etapa de potencia y del control puede observarse en la \cref{fig:circuito_boost}. Esta representación permite relacionar el esquema funcional anterior con las conexiones concretas del sensor, el driver, el interruptor y la carga.
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{images/simulacion/circuito_boost.png}}
+\caption{Circuito Boost completo utilizado para la simulación.}
+\label{fig:circuito_boost}
+\end{figure}
+
 \subsection{Etapa de potencia}
 La fuente de entrada es de \SI{10}{V}. La corriente atraviesa el sensor ACS712 y continúa por el inductor hasta el nodo de conmutación. Cuando el MOSFET conduce, la energía se almacena en el inductor y el nodo de conmutación queda conectado a la referencia de potencia. Cuando el MOSFET se apaga, la corriente del inductor se desvía por el diodo hacia la salida, donde se encuentran el condensador y la carga.
 
@@ -199,6 +207,14 @@ XU1\;ip+\;ip-\;N013\;asc\;5v\;0.
 \]
 Por tanto, el sensor está alimentado entre \SI{5}{V} y \texttt{0}, y su salida analógica es el nodo \texttt{asc}. El modelo selecciona \texttt{.param gain=185m}, correspondiente a una sensibilidad de \SI{185}{mV/A} del modelo usado.
 
+Durante las pruebas de montaje se observó la señal de salida del ACS712 mostrada en la \cref{fig:acs712_out}. Esta señal constituye la medición que posteriormente se acondiciona para compararla con el setpoint. La figura permite verificar la presencia de una señal de sensado, pero no permite determinar por sí sola una corriente absoluta con precisión; para ello se requiere la escala vertical y la calibración del sensor.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{images/montaje/ACS712_out.png}}
+\caption{Señal de salida medida en el sensor de corriente ACS712 durante el montaje.}
+\label{fig:acs712_out}
+\end{figure}
+
 La librería representa el camino de medida mediante una fuente de tensión de corriente primaria \texttt{V1}, una fuente dependiente de corriente \texttt{F1}, un retardo de transmisión de \SI{1}{\micro s}, la resistencia de filtro de \SI{1.7}{k\ohm}, el condensador de \SI{1.3}{\micro F} y una resistencia de salida de \SI{50}{\ohm}. También incluye una fuente dependiente que genera el nivel de referencia de salida mediante la alimentación. Estos elementos forman el modelo eléctrico del sensor; no son componentes adicionales dibujados en el esquemático.
 
 El filtrado externo está dado por \texttt{C1=1 nF} entre \texttt{N013} (\texttt{Filter}) y tierra. Sin embargo, \texttt{B1} utiliza explícitamente el nodo \texttt{asc} (\texttt{Out}) y no \texttt{N013}, de modo que ese condensador no aparece en la ecuación de realimentación que controla el PWM. La fuente comportamental \texttt{B1} está definida como:
@@ -214,6 +230,14 @@ El driver UCC21520 tiene sus entradas lógicas conectadas de modo que el canal d
 El modelo del driver incluye retardos de propagación de \SI{14}{ns} en las entradas, tiempos internos de transición, UVLO para la alimentación lógica y de potencia, control de tiempo muerto, limitación de corriente de salida y etapas CMOS de salida. En el modelo, las salidas comportamentales producen aproximadamente \SI{12}{V} cuando la señal interna de disparo supera \SI{2.5}{V} y \SI{0}{V} en caso contrario. La alimentación de salida del driver es \SI{15}{V}; por ello, la amplitud exacta del gate en este circuito no debe confundirse con la amplitud de \SI{10}{V} de una fuente PWM de referencia.
 
 El tiempo muerto y el comportamiento de la salida complementaria no pueden determinarse numéricamente sin medir las señales en el circuito. Sí puede afirmarse que el canal de entrada PWM es el camino de control que finalmente acciona el MOSFET.
+
+La comparación simulada entre la señal PWM aplicada a la entrada del driver y la señal obtenida a su salida se presenta en la \cref{fig:pwm_driver_sim}. La forma de onda azul oscuro permite evaluar el acondicionamiento de amplitud y los retardos introducidos por el UCC21520 respecto a la señal cian de entrada.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{\detokenize{images/simulacion/senal_pwm(Cian)_vs_salida_Ucc21520(DarkBlue).png}}
+\caption{Comparación simulada entre la señal PWM antes del INB y la salida del UCC21520.}
+\label{fig:pwm_driver_sim}
+\end{figure}
 
 \subsection{Generador, compensador y modulador PWM}
 La señal etiquetada como diente de sierra está definida en el esquemático por:
@@ -305,6 +329,14 @@ El factor de potencia no es equivalente a la eficiencia. En este proyecto la ent
 \end{equation}
 La potencia de entrada no está reportada; por tanto, no es posible dar un valor numérico de eficiencia sin realizar la medición. También quedan pendientes la medición del rizado de corriente y las pérdidas de los componentes.
 
+La relación entre la señal de control, la salida del driver y la respuesta de la carga se muestra en la \cref{fig:pwm_driver_carga_sim}. La señal cian representa el PWM antes del INB, la azul oscuro la salida del UCC21520 y la verde la tensión en la carga. La separación entre estas señales permite distinguir el procesamiento de control de la respuesta dinámica del convertidor; la señal verde no debe interpretarse como una medición experimental.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{\detokenize{images/simulacion/senal_pwm(Cian)_vs_salida_Ucc21520(DarkBlue)_vs_respuesta_salida_en carga(Green).png}}
+\caption{Relación simulada entre PWM, salida del driver UCC21520 y tensión en la carga.}
+\label{fig:pwm_driver_carga_sim}
+\end{figure}
+
 \subsection{Configuración de la simulación}
 La simulación transitoria se configura para observar hasta \SI{60}{ms}, con las tolerancias numéricas ajustadas para el análisis. Estos parámetros describen el método de cálculo, pero no constituyen mediciones del circuito. Para completar el análisis se deben observar al menos la tensión de salida, la corriente del inductor, la tensión gate-source del MOSFET, la salida del ACS712, la señal acondicionada, la orden de control y la señal PWM.
 
@@ -346,6 +378,88 @@ La resistencia de compuerta de \SI{10}{\ohm} debe instalarse próxima al MOSFET 
 
 No se debe conectar ni desconectar el inductor, el diodo o el condensador con la fuente energizada. Antes de modificar el cableado se deben descargar los condensadores y retirar la alimentación.
 
+\subsection{Señal PWM generada por el ESP32}
+Las mediciones de la salida PWM del ESP32 para los ciclos de trabajo de \SI{10}{\percent}, \SI{30}{\percent}, \SI{40}{\percent} y \SI{50}{\percent} se presentan en las figuras \ref{fig:pwm_esp32_10}--\ref{fig:pwm_esp32_50}. La duración relativa del nivel alto aumenta al incrementar el duty cycle, mientras la frecuencia se mantiene aproximadamente constante en las condiciones de la prueba. Estas señales corresponden a la salida del microcontrolador, antes del acondicionamiento realizado por el driver.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{\detokenize{images/montaje/Pwm_D_10.png}}
+\caption{Señal PWM medida a la salida del ESP32 con duty cycle de \SI{10}{\percent}.}
+\label{fig:pwm_esp32_10}
+\end{figure}
+
+La respuesta de tensión medida en la carga para esta misma condición se muestra inmediatamente en la \cref{fig:salida_carga_10}. La pareja de figuras permite relacionar directamente el tiempo de conducción aplicado por el ESP32 con la respuesta experimental del convertidor.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth]{\detokenize{images/montaje/Salida_Pwm_D_10.png}}
+\caption{Tensión de salida medida en la carga con duty cycle de \SI{10}{\percent}.}
+\label{fig:salida_carga_10}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{\detokenize{images/montaje/Pwm_D_30.png}}
+\caption{Señal PWM medida a la salida del ESP32 con duty cycle de \SI{30}{\percent}.}
+\label{fig:pwm_esp32_30}
+\end{figure}
+
+La respuesta de la carga para el mismo duty cycle se presenta en la \cref{fig:salida_carga_30}. Al comparar ambas figuras se observa la relación entre el ancho del pulso de entrada y la tensión continua obtenida en la salida.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth]{\detokenize{images/montaje/Salida_Pwm_D_30.png}}
+\caption{Tensión de salida medida en la carga con duty cycle de \SI{30}{\percent}.}
+\label{fig:salida_carga_30}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{\detokenize{images/montaje/Pwm_D_40.png}}
+\caption{Señal PWM medida a la salida del ESP32 con duty cycle de \SI{40}{\percent}.}
+\label{fig:pwm_esp32_40}
+\end{figure}
+
+La tensión de salida medida para el 40\% se encuentra en la \cref{fig:salida_carga_40}. Ambas evidencias deben analizarse bajo la misma tensión de entrada, carga y tiempo de observación.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth]{\detokenize{images/montaje/Salida_Pwm_D_40.png}}
+\caption{Tensión de salida medida en la carga con duty cycle de \SI{40}{\percent}.}
+\label{fig:salida_carga_40}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{\detokenize{images/montaje/Pwm_D_50.png}}
+\caption{Señal PWM medida a la salida del ESP32 con duty cycle de \SI{50}{\percent}.}
+\label{fig:pwm_esp32_50}
+\end{figure}
+
+Finalmente, la respuesta de la carga para el 50\% se presenta en la \cref{fig:salida_carga_50}. Esta última pareja completa la comparación experimental entre el duty cycle programado y la tensión de salida.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth]{\detokenize{images/montaje/Salida_Pwm_D_50.png}}
+\caption{Tensión de salida medida en la carga con duty cycle de \SI{50}{\percent}.}
+\label{fig:salida_carga_50}
+\end{figure}
+
+La comparación de las figuras confirma cualitativamente el funcionamiento de la modulación por ancho de pulso: el intervalo de conducción aumenta desde el 10\% hasta el 50\%, mientras el período permanece esencialmente constante. Los valores exactos de frecuencia y duty deben obtenerse de los cursores del osciloscopio; las capturas por sí solas no se utilizan para declarar una precisión numérica que no sea legible.
+
+\subsection{Señal Gate-Source del MOSFET}
+Las señales de compuerta respecto a la fuente del IRFZ44N para duty cycles de \SI{30}{\percent} y \SI{40}{\percent} se muestran en las figuras \ref{fig:gate_source_30} y \ref{fig:gate_source_40}. En ambos casos, la señal conserva la naturaleza pulsada del PWM, pero su amplitud y sus tiempos de transición dependen del driver, de la resistencia de compuerta y de las características parásitas del montaje. El aumento del duty se refleja en un mayor tiempo durante el cual el MOSFET permanece excitado.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{images/montaje/IRFZ44N_D_30.png}}
+\caption{Señal Gate-Source del IRFZ44N medida con duty cycle de \SI{30}{\percent}.}
+\label{fig:gate_source_30}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{images/montaje/IRFZ44N_D_40.png}}
+\caption{Señal Gate-Source del IRFZ44N medida con duty cycle de \SI{40}{\percent}.}
+\label{fig:gate_source_40}
+\end{figure}
+
 \subsection{Mediciones requeridas}
 Las mediciones deben realizarse en los mismos puntos utilizados para interpretar la simulación. La \cref{tab:mediciones} organiza las variables que se deben registrar.
 \begin{table}[H]
@@ -369,6 +483,9 @@ Potencia de entrada, salida y eficiencia & Pendiente & Pendiente\\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{Registro conjunto de las respuestas}
+Las parejas de figuras anteriores permiten comparar directamente cada señal PWM con su respuesta experimental. No se dispone de una lectura numérica suficientemente fiable para transcribir valores exactos de tensión desde las capturas; por ello, las imágenes se conservan como evidencia experimental y los valores deben registrarse posteriormente con el multímetro junto con la tensión de entrada, la carga conectada y el estado térmico del convertidor.
 
 La comparación debe realizarse utilizando las mismas condiciones de operación: tensión de entrada, carga, frecuencia de conmutación y tiempo de observación. Para cada variable se debe indicar el valor medio, el valor máximo y mínimo cuando corresponda, y el error relativo:
 \begin{equation}
