@@ -103,7 +103,7 @@ const int PIN_PWM_CONTROL = 25;
 const int PIN_ADC_CORRIENTE = 34;
 
 
-// Salida PWM de la corriente filtrada
+// Salida PWM de la tension filtrada
 const int PIN_SALIDA_FILTRADA = 33;
 
 
@@ -213,22 +213,25 @@ const int NUM_MUESTRAS_OFFSET = 128;
 const float FILTRO_ALPHA = 0.05f;
 
 
-// Rango de corriente representado por la salida filtrada
-const float CORRIENTE_SALIDA_MAX = 3.0f;
+// Tension maxima representada en GPIO33
+const float TENSION_SALIDA_MAX = 3.3f;
 
 
 // Offset medido en la salida del ACS712
 float acs712_offset_V = 2.3853f;
 
 
-float corriente_filtrada = 0.0f;
+float tension_adc_medido = 0.0f;
+
+
+float tension_adc_filtrada = 0.0f;
 
 
 // =======================================================================
 // LIMITADOR DE CORRIENTE
 // =======================================================================
 
-const float IL_MAX = 3.0f;
+const float IL_MAX = 2.0f;
 
 const float KLIM = 4.0f;
 
@@ -309,9 +312,13 @@ float leerCorrienteA()
         v_adc_mV / 1000.0f;
 
 
+    tension_adc_medido =
+        v_adc;
+
+
     // Recuperar tension original del ACS712
     float v_acs =
-        v_adc / DIVISOR_RATIO;
+        v_adc / DIVISOR_RATIO;F
 
 
     // Convertir tension a corriente
@@ -855,15 +862,15 @@ void loop()
             leerCorrienteA();
 
 
-        // Suavizado exponencial de la corriente medida
-        corriente_filtrada +=
+        // Reproducir en GPIO33 la tension de GPIO34, filtrada
+        tension_adc_filtrada +=
             FILTRO_ALPHA *
-            (iL_medida - corriente_filtrada);
+            (tension_adc_medido - tension_adc_filtrada);
 
 
         float duty_salida_filtrada =
-            corriente_filtrada /
-            CORRIENTE_SALIDA_MAX;
+            tension_adc_filtrada /
+            TENSION_SALIDA_MAX;
 
 
         if (duty_salida_filtrada > 1.0f)
