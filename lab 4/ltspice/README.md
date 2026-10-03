@@ -119,6 +119,118 @@ Conectar `INA` de `U1` al nodo `INA` de esta fuente comportamental y dejar
 driver. El UCC21520 se encarga del retardo, los tiempos de subida/bajada y el
 dead-time; el PI no debe intentar generarlos.
 
+## Como buscar y colocar cada componente en LTspice
+
+Esta guia usa la interfaz grafica. `F2` abre el buscador de componentes, `F3`
+inicia el cableado, `F4` coloca una etiqueta, `G` coloca tierra y `S` coloca
+una directiva SPICE.
+
+### 1. Preparar una copia
+
+Abrir `buckboost.asc` y usar `File > Save As` para guardar una copia llamada
+`buckboost_control_acs.asc`. Asi se conserva el esquema original.
+
+### 2. Buscar el ACS712
+
+El ACS712 es un simbolo local, no un componente estandar. Deben existir estos
+archivos junto al proyecto:
+
+```text
+ACS712.asy
+ACS712.lib
+```
+
+Para colocarlo, presionar `F2`, escribir `ACS712`, seleccionar el simbolo y
+hacer clic en el esquema. Presionar `Esc` al terminar.
+
+Si no aparece, copiar `ACS712.asy` a la carpeta `lib/sym` de LTspice, reiniciar
+el programa y buscarlo otra vez. Luego presionar `S` y agregar:
+
+```spice
+.include ACS712.lib
+```
+
+### 3. Cablear el ACS712
+
+El sensor debe estar en serie con la rama buck, no en paralelo. La rama buck
+es la que contiene `M1`, `L1`, `C1` y `R1`.
+
+1. Presionar `F3` y separar el cable entre el interruptor y `L1`.
+2. Colocar el ACS712 en ese corte.
+3. Conectar el lado del interruptor a `I+` y el lado de `I-` hacia `L1`.
+4. Buscar `voltage` con `F2`, colocar una fuente DC de 5 V y conectar `V+` a
+   ella.
+5. Conectar `V-` y el negativo de la fuente a tierra usando `G`.
+6. Buscar `cap` con `F2` y colocar un capacitor de `1.3u` entre `Filter` y
+   tierra.
+7. Presionar `F4` sobre el cable de `Out`, escribir `ACS_OUT` y aceptar.
+
+Si la tension disminuye cuando aumenta la corriente, intercambiar `I+` e
+`I-`. El modelo usado entrega aproximadamente:
+
+```text
+V(ACS_OUT) = 2.5 V + 0.185 V/A * I
+```
+
+### 4. Colocar las fuentes de control
+
+Para cada fuente comportamental, presionar `F2`, buscar `bv`, colocarla y
+hacer clic derecho para escribir su expresion en `Value`. En todos los casos,
+conectar el terminal negativo a tierra.
+
+Colocar estas tres fuentes:
+
+```spice
+* Error de corriente
+BERR err 0 V={V(IREF)-V(ACS_OUT)}
+
+* Control PI, salida entre 0.02 y 0.95 V
+BCTRL duty 0 V={limit(0.58+Kp*V(err)+Ki*idt(V(err)),0.02,0.95)}
+
+* Comparador PWM para INA
+BINA INA 0 V={5*(V(duty)>V(SAW))}
+```
+
+Usar `F4` para colocar las etiquetas `err`, `duty` e `INA` en las salidas.
+Eliminar la conexion de `V2` que actualmente llega directamente a `INA`.
+
+### 5. Crear referencia y rampa
+
+Presionar `S` y colocar estas directivas en un espacio libre:
+
+```spice
+.param IREF_A=1
+.param ACS_GAIN=0.185
+.param Kp=0.05
+.param Ki=0
+VREF IREF 0 {2.5+ACS_GAIN*IREF_A}
+BSAW SAW 0 V={mod(time,50u)/50u}
+```
+
+Para introducir `VREF` y `BSAW` desde la interfaz, colocar dos fuentes `bv`
+con `F2`, escribir respectivamente sus expresiones y etiquetar sus salidas
+como `IREF` y `SAW`. La rampa tiene un periodo de 50 us:
+
+$$f_s=\frac{1}{50\,\mathrm{us}}=20\,\mathrm{kHz}$$
+
+No usar `V4` tal como aparece en el esquema original: su pulso de 1 ps no es
+una rampa PWM valida.
+
+### 6. Ejecutar la prueba
+
+Presionar `S`, colocar la directiva siguiente y ejecutar con el boton de
+simulacion:
+
+```spice
+.tran 0 10m 0 50n uic
+```
+
+En la ventana de resultados hacer clic en los cables para observar
+`V(ACS_OUT)`, `V(IREF)`, `V(duty)`, `V(SAW)` y `V(INA)`. Para 1 A, la salida
+del ACS712 debe acercarse a 2.685 V y `V(INA)` debe ser una señal de 0/5 V a
+20 kHz. Si `duty` se queda en 0.02 o 0.95, reducir `Kp`, revisar la polaridad
+del sensor y confirmar que el ACS712 esta midiendo la rama buck.
+
 ## Referencia de corriente
 
 La referencia puede ser una fuente DC o una señal variable, siempre en la
