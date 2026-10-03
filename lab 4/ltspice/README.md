@@ -21,7 +21,7 @@ La estructura correcta es:
 Iref -> error -> PI de corriente -> duty -> comparador con SAW -> INA
   ^                                                       |
   |                                                       v
-  +---------------- I(L1), corriente del buck <- potencia
+   +------------- V(ACS_OUT), corriente del buck <- potencia
 ```
 
 El PI calcula el duty. El comparador convierte ese duty en el PWM que entra
@@ -50,23 +50,51 @@ corregirse automaticamente.
 ## Cambio minimo en `buckboost.asc`
 
 1. Retirar o desconectar `V2` de la red `PULSE` que llega a `INA`.
-2. Conservar `SAW` (`V4`) y la frecuencia de 20 kHz.
-3. Crear un nodo de medida de corriente para el inductor del buck. La forma
-   mas sencilla, sin colocar un sensor fisico, es usar directamente `I(L1)`.
-4. Crear una referencia `IREF`. Para el ejemplo se usa una escala de 1 V/A:
+2. No conservar `V4` tal como esta. Aunque el nodo se llama `SAW`,
+   `V4` esta definido como `PULSE(0 1 0 50u 1f 1p 50u)` y no genera una
+   rampa: solo permanece en 1 V durante aproximadamente 1 ps. Desconectar
+   `V4` y generar una rampa real en el mismo nodo `SAW`:
+
+```spice
+BSAW SAW 0 V={mod(time,50u)/50u}
+```
+
+   Esta rampa va de 0 a 1 V cada 50 us, por lo que corresponde a 20 kHz.
+   Conservar el etiquetado `SAW` y la frecuencia de 20 kHz.
+3. Usar el `ACS712` para medir la corriente de la rama del buck. El sensor
+   debe quedar en serie con `L1`, de modo que la corriente entre por `I+` y
+   salga por `I-`. En el esquema, la rama del buck es la que contiene `M1`,
+   `L1`, `C1` y `R1`; no se debe usar la medicion del ACS712 que este en la
+   rama marcada como `BOOST`.
+
+   Conectar sus alimentaciones: `V+` a 5 V, `V-` a COM/GND, `Out` al nodo
+   `ACS_OUT` y `Filter` a un capacitor hacia COM si se desea filtrado externo.
+
+   El modelo `ACS712.lib` corresponde al sensor de 5 A. Su salida tiene un
+   offset de 2.5 V y una sensibilidad de 0.185 V/A:
+
+```text
+V(ACS_OUT) = 2.5 + 0.185*I(A)
+```
+
+   Si la pendiente aparece invertida, intercambiar `I+` e `I-`.
+
+4. Crear una referencia `IREF` expresada en voltios del sensor. Para 1 A:
 
 ```spice
 .param IREF_A=1
 .param Kp=0.20
 .param Ki=400
-.param IGAIN=1
+.param ACS_GAIN=0.185
+VREF IREF 0 {2.5+ACS_GAIN*IREF_A}
 ```
 
-5. Añadir una fuente comportamental para el error. Si la orientacion de
-   `L1` hace que `I(L1)` sea negativa, cambiar el signo de esa corriente:
+5. Añadir una fuente comportamental para el error usando la salida del
+   ACS712. No comparar directamente amperios con voltios, porque el sensor
+   incluye el offset de 2.5 V:
 
 ```spice
-BERR err 0 V={V(IREF)-IGAIN*I(L1)}
+BERR err 0 V={V(IREF)-V(ACS_OUT)}
 ```
 
 6. Añadir el PI y limitar su salida para que nunca genere un duty negativo ni
@@ -93,10 +121,11 @@ dead-time; el PI no debe intentar generarlos.
 
 ## Referencia de corriente
 
-La referencia puede ser una fuente DC o una señal variable:
+La referencia puede ser una fuente DC o una señal variable, siempre en la
+escala de tension del ACS712:
 
 ```spice
-VREF IREF 0 {IREF_A}
+VREF IREF 0 {2.5+ACS_GAIN*IREF_A}
 ```
 
 Ejemplos:
@@ -106,13 +135,12 @@ Ejemplos:
 .param IREF_A=1
 
 ; Escalon entre 0.8 A y 1.2 A
-VREF IREF 0 PULSE(0.8 1.2 5m 1u 1u 5m 10m)
+VREF IREF 0 PULSE(2.648 2.722 5m 1u 1u 5m 10m)
 ```
 
-Si se desea regular la corriente de salida en lugar de la corriente del
-inductor, se debe medir la corriente en la rama de carga. En un buck CCM,
-`I(L1)` es una buena variable para el lazo interno, pero contiene el rizado de
-conmutacion.
+`I(L1)` se puede observar como comprobacion adicional, pero la variable del
+lazo debe ser `V(ACS_OUT)`. El ACS712 debe estar en la rama cuya corriente se
+desea regular.
 
 ## Como obtener una corriente estable
 
@@ -123,18 +151,21 @@ regular su valor medio. Para observarlo correctamente:
 - Graficar `I(L1)` y tambien su promedio en varios periodos de conmutacion.
 - Mantener el buck en conduccion continua; una corriente de referencia muy
   baja puede llevarlo a conduccion discontinua.
-- Si el PI reacciona al rizado, filtrar la medicion antes de `BERR`. Un filtro
-  inicial puede ser:
+- El modelo del ACS712 ya incluye un filtro interno (`R2=1.7 kOhm` y
+   `C1=1.3 uF`), cuya frecuencia de corte es aproximadamente 72 Hz. Es
+   adecuado para regular la corriente media, pero limita la rapidez del lazo.
+   Si se necesita mas filtrado, agregarlo despues de `Out`:
 
 ```spice
-EIMON imon 0 LAPLACE={IGAIN*I(L1)} {1/(1+s/(2*pi*2000))}
+* Filtro RC externo opcional: fc ~= 2 kHz
+RIMON ACS_OUT imon 1k
+CIMON imon 0 79.6n
 BERR err 0 V={V(IREF)-V(imon)}
 ```
 
-Usar una frecuencia de corte bastante menor que 20 kHz, pero mayor que la
-dinamica deseada del lazo. Si esta expresion no es aceptada por la version de
-LTspice, se puede reemplazar por un `UniversalOpAmp` con una red RC de paso
-bajo.
+La frecuencia de corte aproximada es $f_c=1/(2\pi RC)=2$ kHz. Usar una
+frecuencia de corte bastante menor que 20 kHz, pero mayor que la dinamica
+deseada del lazo. Si se necesita otra escala de sensor, ajustar `IGAIN`.
 
 ## Ajuste del PI
 
@@ -158,13 +189,14 @@ Usar una simulacion transitoria de al menos 10 ms y observar:
 V(INA)       PWM logico de 0/5 V
 V(duty)      salida del PI, entre 0 y 1 V
 V(SAW)       rampa de 0 a 1 V
-I(L1)        corriente instantanea del inductor
-V(IREF)      corriente de referencia en la escala elegida
+`V(ACS_OUT)`   salida del ACS712, 2.5 V + 0.185 V/A
+`V(IREF)`      referencia en la misma escala del ACS712
 V(Vmed)      tension medida, si tambien se conserva el lazo de tension
 ```
 
-La comprobacion principal es que el promedio de `I(L1)` siga `IREF` y que
-`V(INA)` conserve 20 kHz, cambiando unicamente su duty.
+La comprobacion principal es que `V(ACS_OUT)` siga a `V(IREF)` y que `V(INA)`
+conserve 20 kHz, cambiando unicamente su duty. Para 1 A, la medicion debe
+acercarse a 2.685 V.
 
 ## Nota sobre tension de salida
 
