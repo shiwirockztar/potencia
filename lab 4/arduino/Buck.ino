@@ -22,6 +22,15 @@ const int PIN_ADC_IL300 = 34;
 // Entrada PWM del driver UCC21520.
 const int PIN_PWM_CONTROL = 25;
 
+// PWM generador de referencia para pruebas.
+const int PIN_PWM_GENERADOR = 26;
+
+// Salida PWM de la realimentacion filtrada.
+const int PIN_SALIDA_FILTRADA = 33;
+
+// Indicador del nivel alto o bajo de la referencia.
+const int PIN_REFERENCIA_DIGITAL = 27;
+
 const uint32_t FSW_HZ = 20000;
 const float CONTROL_FS_HZ = 10000.0f;
 const float TS = 1.0f / CONTROL_FS_HZ;
@@ -32,6 +41,9 @@ const uint32_t LEDC_MAX_DUTY =
 // Referencia en el nodo Vsense. Con el divisor 18 kOhm/2 kOhm:
 // 1.0 V en Vsense corresponde a aproximadamente 10 V en Vout.
 const float VOLTAGE_REFERENCE_SENSE_V = 1.0f;
+
+// El duty introducido por serie representa 0..1.5 V en Vsense.
+const float VOLTAGE_REFERENCE_PWM_MAX_V = 1.5f;
 
 // Si existe otro divisor entre el receptor IL300 y el ADC, ajustar este
 // valor: V_sense = V_adc / IL300_ADC_SCALE.
@@ -45,9 +57,12 @@ const float KP = 0.269881f;
 const float KI = 433.32f;
 
 float feedback_filtrado_V = 0.0f;
+float voltage_reference_sense_V = VOLTAGE_REFERENCE_SENSE_V;
 float integrador = 0.0f;
 float error_anterior = 0.0f;
 float duty_control = 0.0f;
+float duty_generador_porcentaje =
+    VOLTAGE_REFERENCE_SENSE_V / VOLTAGE_REFERENCE_PWM_MAX_V * 100.0f;
 
 hw_timer_t *timerControl = NULL;
 volatile bool bandera_control = false;
@@ -114,6 +129,53 @@ void escribirPWM(float duty)
     );
 }
 
+void actualizarPWMGenerador()
+{
+    const float duty_generador =
+        duty_generador_porcentaje / 100.0f;
+
+    ledcWrite(
+        PIN_PWM_GENERADOR,
+        (uint32_t)(duty_generador * LEDC_MAX_DUTY)
+    );
+}
+
+void leerDutyPorSerie()
+{
+    if (!Serial.available())
+        return;
+
+    String entrada = Serial.readStringUntil('\n');
+    entrada.trim();
+
+    if (entrada.length() == 0)
+        return;
+
+    const float duty_recibido = entrada.toFloat();
+
+    if (duty_recibido < 0.0f || duty_recibido > 100.0f)
+    {
+        Serial.println("Error: introduce un duty entre 0 y 100.");
+        return;
+    }
+
+    duty_generador_porcentaje = duty_recibido;
+    voltage_reference_sense_V =
+        duty_generador_porcentaje / 100.0f *
+        VOLTAGE_REFERENCE_PWM_MAX_V;
+
+    digitalWrite(
+        PIN_REFERENCIA_DIGITAL,
+        duty_generador_porcentaje >= 50.0f ? HIGH : LOW
+    );
+
+    actualizarPWMGenerador();
+
+    Serial.print("Duty PWM GPIO26 actualizado: ");
+    Serial.print(duty_generador_porcentaje, 2);
+    Serial.println(" %");
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -123,6 +185,15 @@ void setup()
     analogSetPinAttenuation(PIN_ADC_IL300, ADC_11db);
 
     pinMode(PIN_ADC_IL300, INPUT);
+    pinMode(PIN_REFERENCIA_DIGITAL, OUTPUT);
+    digitalWrite(PIN_REFERENCIA_DIGITAL, duty_generador_porcentaje >= 50.0f);
+
+    ledcAttach(
+        PIN_PWM_GENERADOR,
+        FSW_HZ,
+        LEDC_RESOLUTION_BITS
+    );
+    actualizarPWMGenerador();
 
     ledcAttach(
         PIN_PWM_CONTROL,
@@ -131,6 +202,13 @@ void setup()
     );
     escribirPWM(0.0f);
 
+    ledcAttach(
+        PIN_SALIDA_FILTRADA,
+        FSW_HZ,
+        LEDC_RESOLUTION_BITS
+    );
+    ledcWrite(PIN_SALIDA_FILTRADA, 0);
+
     timerControl = timerBegin(1000000);
     timerAttachInterrupt(timerControl, &onTimerControl);
 
@@ -138,7 +216,9 @@ void setup()
         (uint64_t)(1e6f / CONTROL_FS_HZ);
     timerAlarm(timerControl, periodo_us, true, 0);
 
-    Serial.println("Control de tension buck con IL300");
+    Serial.println("Control de tension buck con IL300 + generador PWM");
+    Serial.print("PWM generador: GPIO ");
+    Serial.println(PIN_PWM_GENERADOR);
     Serial.print("Entrada ADC IL300: GPIO ");
     Serial.println(PIN_ADC_IL300);
     Serial.print("Referencia Vsense: ");
@@ -146,10 +226,17 @@ void setup()
     Serial.println(" V");
     Serial.print("PWM de control: GPIO ");
     Serial.println(PIN_PWM_CONTROL);
+    Serial.print("PWM realimentacion filtrada: GPIO ");
+    Serial.println(PIN_SALIDA_FILTRADA);
+    Serial.print("Indicador referencia: GPIO ");
+    Serial.println(PIN_REFERENCIA_DIGITAL);
+    Serial.println("Introduce el duty del PWM GPIO26 (0 a 100) y pulsa Enter:");
 }
 
 void loop()
 {
+    leerDutyPorSerie();
+
     if (!bandera_control)
         return;
 
@@ -163,17 +250,31 @@ void loop()
 
     // Error positivo: falta tension, por lo que el PI aumenta el duty.
     const float error =
-        VOLTAGE_REFERENCE_SENSE_V - feedback_filtrado_V;
+        voltage_reference_sense_V - feedback_filtrado_V;
 
     duty_control = compensadorPI(error);
     escribirPWM(duty_control);
+
+    float duty_feedback =
+        feedback_filtrado_V / VOLTAGE_REFERENCE_PWM_MAX_V;
+    if (duty_feedback > 1.0f)
+        duty_feedback = 1.0f;
+    if (duty_feedback < 0.0f)
+        duty_feedback = 0.0f;
+
+    ledcWrite(
+        PIN_SALIDA_FILTRADA,
+        (uint32_t)(duty_feedback * LEDC_MAX_DUTY)
+    );
 
     static uint16_t contador_print = 0;
     if (++contador_print >= 500)
     {
         contador_print = 0;
 
-        Serial.print("Vsense=");
+        Serial.print("Vref=");
+        Serial.print(voltage_reference_sense_V, 3);
+        Serial.print(" V   Vsense=");
         Serial.print(feedback_filtrado_V, 3);
         Serial.print(" V   Error=");
         Serial.print(error, 3);
