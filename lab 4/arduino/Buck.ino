@@ -16,8 +16,8 @@
 
 #include <Arduino.h>
 
-// Entrada analogica conectada a la salida del amplificador receptor del IL300.
-const int PIN_ADC_IL300 = 34;
+// ADC de realimentacion del buck. Mismo GPIO que el ACS712 del Boost.
+const int PIN_ADC_CORRIENTE = 34;
 
 // Entrada PWM del driver UCC21520.
 const int PIN_PWM_CONTROL = 25;
@@ -28,8 +28,8 @@ const int PIN_PWM_GENERADOR = 26;
 // Salida PWM de la realimentacion filtrada.
 const int PIN_SALIDA_FILTRADA = 33;
 
-// Indicador del nivel alto o bajo de la referencia.
-const int PIN_REFERENCIA_DIGITAL = 27;
+// Indicador de referencia. Mismo GPIO que el Boost.
+const int PIN_IREF_DIGITAL = 27;
 
 const uint32_t FSW_HZ = 20000;
 const float CONTROL_FS_HZ = 10000.0f;
@@ -37,10 +37,13 @@ const float TS = 1.0f / CONTROL_FS_HZ;
 const int LEDC_RESOLUTION_BITS = 10;
 const uint32_t LEDC_MAX_DUTY =
     (1U << LEDC_RESOLUTION_BITS) - 1U;
+const float DUTY_MAX = 0.85f;
 
-// Referencia en el nodo Vsense. Con el divisor 18 kOhm/2 kOhm:
-// 1.0 V en Vsense corresponde a aproximadamente 10 V en Vout.
-const float VOLTAGE_REFERENCE_SENSE_V = 1.0f;
+// Referencias de salida del buck. Con el divisor 18 kOhm/2 kOhm,
+// Vout/10 corresponde aproximadamente a Vsense.
+const float VOUT_REFERENCE_LOW_V = 1.0f;
+const float VOUT_REFERENCE_HIGH_V = 10.0f;
+const uint32_t REFERENCE_INTERVAL_MS = 20;
 
 // El duty introducido por serie representa 0..1.5 V en Vsense.
 const float VOLTAGE_REFERENCE_PWM_MAX_V = 1.5f;
@@ -57,12 +60,14 @@ const float KP = 0.269881f;
 const float KI = 433.32f;
 
 float feedback_filtrado_V = 0.0f;
-float voltage_reference_sense_V = VOLTAGE_REFERENCE_SENSE_V;
+float voltage_reference_sense_V = VOUT_REFERENCE_LOW_V / 10.0f;
 float integrador = 0.0f;
 float error_anterior = 0.0f;
 float duty_control = 0.0f;
 float duty_generador_porcentaje =
-    VOLTAGE_REFERENCE_SENSE_V / VOLTAGE_REFERENCE_PWM_MAX_V * 100.0f;
+    voltage_reference_sense_V / VOLTAGE_REFERENCE_PWM_MAX_V * 100.0f;
+bool referencia_alta = false;
+uint32_t tiempo_referencia_anterior = 0;
 
 hw_timer_t *timerControl = NULL;
 volatile bool bandera_control = false;
@@ -77,7 +82,7 @@ float leerFeedbackIL300V()
     uint32_t suma_adc_mV = 0;
 
     for (int muestra = 0; muestra < NUM_MUESTRAS_IL300; muestra++)
-        suma_adc_mV += analogReadMilliVolts(PIN_ADC_IL300);
+        suma_adc_mV += analogReadMilliVolts(PIN_ADC_CORRIENTE);
 
     const float adc_V =
         (suma_adc_mV / (float)NUM_MUESTRAS_IL300) / 1000.0f;
@@ -95,7 +100,7 @@ float compensadorPI(float error)
     const float salida_sin_sat =
         KP * error + integrador + delta_integrador;
 
-    const bool saturado_alto = salida_sin_sat > 1.0f;
+    const bool saturado_alto = salida_sin_sat > DUTY_MAX;
     const bool saturado_bajo = salida_sin_sat < 0.0f;
 
     if (!((saturado_alto && error > 0.0f) ||
@@ -108,8 +113,8 @@ float compensadorPI(float error)
 
     float salida = KP * error + integrador;
 
-    if (salida > 1.0f)
-        salida = 1.0f;
+    if (salida > DUTY_MAX)
+        salida = DUTY_MAX;
     if (salida < 0.0f)
         salida = 0.0f;
 
@@ -118,8 +123,8 @@ float compensadorPI(float error)
 
 void escribirPWM(float duty)
 {
-    if (duty > 1.0f)
-        duty = 1.0f;
+    if (duty > DUTY_MAX)
+        duty = DUTY_MAX;
     if (duty < 0.0f)
         duty = 0.0f;
 
@@ -138,6 +143,28 @@ void actualizarPWMGenerador()
         PIN_PWM_GENERADOR,
         (uint32_t)(duty_generador * LEDC_MAX_DUTY)
     );
+}
+
+void actualizarReferenciaAutomatica()
+{
+    const uint32_t tiempo_actual = millis();
+
+    if (tiempo_actual - tiempo_referencia_anterior < REFERENCE_INTERVAL_MS)
+        return;
+
+    tiempo_referencia_anterior = tiempo_actual;
+    referencia_alta = !referencia_alta;
+
+    const float referencia_vout = referencia_alta
+        ? VOUT_REFERENCE_HIGH_V
+        : VOUT_REFERENCE_LOW_V;
+
+    voltage_reference_sense_V = referencia_vout / 10.0f;
+    duty_generador_porcentaje =
+        voltage_reference_sense_V / VOLTAGE_REFERENCE_PWM_MAX_V * 100.0f;
+
+    digitalWrite(PIN_IREF_DIGITAL, referencia_alta ? HIGH : LOW);
+    actualizarPWMGenerador();
 }
 
 void leerDutyPorSerie()
@@ -165,7 +192,7 @@ void leerDutyPorSerie()
         VOLTAGE_REFERENCE_PWM_MAX_V;
 
     digitalWrite(
-        PIN_REFERENCIA_DIGITAL,
+        PIN_IREF_DIGITAL,
         duty_generador_porcentaje >= 50.0f ? HIGH : LOW
     );
 
@@ -182,11 +209,11 @@ void setup()
     delay(500);
 
     analogReadResolution(12);
-    analogSetPinAttenuation(PIN_ADC_IL300, ADC_11db);
+    analogSetPinAttenuation(PIN_ADC_CORRIENTE, ADC_11db);
 
-    pinMode(PIN_ADC_IL300, INPUT);
-    pinMode(PIN_REFERENCIA_DIGITAL, OUTPUT);
-    digitalWrite(PIN_REFERENCIA_DIGITAL, duty_generador_porcentaje >= 50.0f);
+    pinMode(PIN_ADC_CORRIENTE, INPUT);
+    pinMode(PIN_IREF_DIGITAL, OUTPUT);
+    digitalWrite(PIN_IREF_DIGITAL, duty_generador_porcentaje >= 50.0f);
 
     ledcAttach(
         PIN_PWM_GENERADOR,
@@ -220,22 +247,22 @@ void setup()
     Serial.print("PWM generador: GPIO ");
     Serial.println(PIN_PWM_GENERADOR);
     Serial.print("Entrada ADC IL300: GPIO ");
-    Serial.println(PIN_ADC_IL300);
-    Serial.print("Referencia Vsense: ");
-    Serial.print(VOLTAGE_REFERENCE_SENSE_V, 3);
-    Serial.println(" V");
+    Serial.println(PIN_ADC_CORRIENTE);
+    Serial.print("Referencia inicial Vout: ");
+    Serial.print(VOUT_REFERENCE_LOW_V, 3);
+    Serial.println(" V equivalente");
     Serial.print("PWM de control: GPIO ");
     Serial.println(PIN_PWM_CONTROL);
     Serial.print("PWM realimentacion filtrada: GPIO ");
     Serial.println(PIN_SALIDA_FILTRADA);
     Serial.print("Indicador referencia: GPIO ");
-    Serial.println(PIN_REFERENCIA_DIGITAL);
-    Serial.println("Introduce el duty del PWM GPIO26 (0 a 100) y pulsa Enter:");
+    Serial.println(PIN_IREF_DIGITAL);
+    Serial.println("Referencia automatica GPIO26: 1 V / 10 V cada 20 ms");
 }
 
 void loop()
 {
-    leerDutyPorSerie();
+    actualizarReferenciaAutomatica();
 
     if (!bandera_control)
         return;
