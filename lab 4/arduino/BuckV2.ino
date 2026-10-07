@@ -87,7 +87,7 @@ void updateSetpoint(uint32_t now) {
 }
 
 void updateControl(uint32_t now) {
-  voltage = analogReadMilliVolts(PIN_ADC) * 0.0108f;
+  voltage = analogReadMilliVolts(PIN_ADC) * 0.01285f;
   const float error = setpoint - voltage;
   const float dt = (now - lastControlUs) * 1e-6f;
 

@@ -45,7 +45,7 @@ Parametros iniciales:
 ### Conversion del ADC
 
 El codigo usa `analogReadMilliVolts()` y multiplica el resultado por `0.0108`.
-Esto supone una ganancia total de 10.8 entre la tension real del buck y la
+La ganancia calibrada actualmente es 12.85 entre la tension real del buck y la
 tension que llega al ADC. Si se cambia el divisor o la calibracion, hay que
 cambiar ese factor en `updateControl()`.
 
