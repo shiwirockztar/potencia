@@ -67,7 +67,10 @@ void loop() {
 // ============================================================
 
 void updateControl(uint32_t now) {
-  voltage = analogReadMilliVolts(PIN_ADC) * 0.01028f;
+  //voltage = analogReadMilliVolts(PIN_ADC) * 0.01028f; //calibracion lineal
+  //voltage = analogReadMilliVolts(PIN_ADC) * 0.010645260f - 0.152471264 calibracion 
+  const float measuredVoltage = analogReadMilliVolts(PIN_ADC) * 0.010645260f - 0.152471264f; // Calibración polinomial
+  voltage = -0.236816150f + measuredVoltage * (1.098464112f + measuredVoltage * (-0.010294477f + 0.000325122f * measuredVoltage));
   const float error = setpoint - voltage;
   const float dt = (now - lastControlUs) * 1e-6f;
 
