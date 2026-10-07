@@ -1,13 +1,13 @@
 /*
    Control de tension del buck con realimentacion aislada IL300.
 
-   La funcion de transferencia del esquema buck_control.asc es:
+   La etapa de potencia actual usa L=4 mH y C=22 uF. Los coeficientes
+   anteriores procedian de otro modelo y producian una integral demasiado
+   agresiva para esta etapa.
 
-       (0.269881*s + 433.32) / (s + 1e-9)
-
-   Por tanto, el controlador implementado es un PI con:
-       Kp = 0.269881
-       Ki = 433.32
+   La sintonizacion actual busca un tiempo de establecimiento aproximado de
+   30 ms. El tiempo integral se fija en 15 ms para que el PI corrija el error
+   estacionario sin intentar seguir el ruido del ADC.
 
    El IL300 debe entregar al ADC la senal Vsense del receptor. En el
    esquema, R1=18 kOhm y R2=2 kOhm forman un divisor 10:1, por lo que
@@ -16,8 +16,8 @@
 
 #include <Arduino.h>
 
-// ADC de realimentacion del buck. Mismo GPIO que el ACS712 del Boost.
-const int PIN_ADC_CORRIENTE = 34;
+// ADC de realimentacion de tension del buck.
+const int PIN_ADC_FEEDBACK = 34;
 
 // Entrada PWM del driver UCC21520.
 const int PIN_PWM_CONTROL = 25;
@@ -34,6 +34,7 @@ const int PIN_IREF_DIGITAL = 27;
 const uint32_t FSW_HZ = 20000;
 const float CONTROL_FS_HZ = 10000.0f;
 const float TS = 1.0f / CONTROL_FS_HZ;
+const float VIN_BUCK_V = 17.0f;
 const int LEDC_RESOLUTION_BITS = 10;
 const uint32_t LEDC_MAX_DUTY =
     (1U << LEDC_RESOLUTION_BITS) - 1U;
@@ -41,31 +42,39 @@ const float DUTY_MAX = 0.85f;
 
 // Referencias de salida del buck. Con el divisor 18 kOhm/2 kOhm,
 // Vout/10 corresponde aproximadamente a Vsense.
-const float VOUT_REFERENCE_LOW_V = 1.0f;
+const float VOUT_REFERENCE_LOW_V = 7.0f;
 const float VOUT_REFERENCE_HIGH_V = 10.0f;
-const uint32_t REFERENCE_INTERVAL_MS = 20;
+// Debe ser mayor que el tiempo de establecimiento para poder observar cada
+// escalon de referencia durante las pruebas.
+const uint32_t REFERENCE_INTERVAL_MS = 50;
 
-// El duty introducido por serie representa 0..1.5 V en Vsense.
+// El duty del generador representa 0..1.5 V en Vsense.
 const float VOLTAGE_REFERENCE_PWM_MAX_V = 1.5f;
 
-// Si existe otro divisor entre el receptor IL300 y el ADC, ajustar este
-// valor: V_sense = V_adc / IL300_ADC_SCALE.
-const float IL300_ADC_SCALE = 1.0f;
+const int NUM_MUESTRAS_IL300 = 1;
+const float FILTRO_IL300_ALPHA = 1.0f;
 
-const int NUM_MUESTRAS_IL300 = 8;
-const float FILTRO_IL300_ALPHA = 0.05f;
+// Calibracion medida en el ADC: 7 V -> 0.1406 V y 12 V -> 0.7500 V.
+const float IL300_ADC_AT_7V = 0.1406f;
+const float IL300_ADC_AT_12V = 0.7500f;
+const float IL300_ADC_SLOPE =
+    (IL300_ADC_AT_12V - IL300_ADC_AT_7V) / 5.0f;
 
-// Coeficientes obtenidos directamente de buck_control.asc.
-const float KP = 0.269881f;
-const float KI = 433.32f;
+// Parametros de la etapa de potencia actual.
+const float SETTLING_TIME_TARGET_S = 0.010f;
+const float INTEGRAL_TIME_S = 0.0007f;
+
+// PI de respuesta rapida para L=4 mH, C=22 uF y muestreo a 10 kHz.
+// Ti = Kp / Ki = 0.7 ms.
+const float KP = 2.50f;
+const float KI = KP / INTEGRAL_TIME_S;
 
 float feedback_filtrado_V = 0.0f;
-float voltage_reference_sense_V = VOUT_REFERENCE_LOW_V / 10.0f;
-float integrador = 0.0f;
-float error_anterior = 0.0f;
+float voltage_reference_adc_V = IL300_ADC_AT_7V;
+float integrador = VOUT_REFERENCE_LOW_V / VIN_BUCK_V;
 float duty_control = 0.0f;
 float duty_generador_porcentaje =
-    voltage_reference_sense_V / VOLTAGE_REFERENCE_PWM_MAX_V * 100.0f;
+    voltage_reference_adc_V / VOLTAGE_REFERENCE_PWM_MAX_V * 100.0f;
 bool referencia_alta = false;
 uint32_t tiempo_referencia_anterior = 0;
 
@@ -77,41 +86,34 @@ void IRAM_ATTR onTimerControl()
     bandera_control = true;
 }
 
-float leerFeedbackIL300V()
+float leerFeedbackADC_V()
 {
     uint32_t suma_adc_mV = 0;
 
     for (int muestra = 0; muestra < NUM_MUESTRAS_IL300; muestra++)
-        suma_adc_mV += analogReadMilliVolts(PIN_ADC_CORRIENTE);
+        suma_adc_mV += analogReadMilliVolts(PIN_ADC_FEEDBACK);
 
     const float adc_V =
         (suma_adc_mV / (float)NUM_MUESTRAS_IL300) / 1000.0f;
 
-    return adc_V / IL300_ADC_SCALE;
+    return adc_V;
 }
 
 float compensadorPI(float error)
 {
-    // Integracion trapezoidal, equivalente a la discretizacion del PI
-    // de la funcion Laplace del esquema.
-    const float delta_integrador =
-        KI * TS * 0.5f * (error + error_anterior);
+    const float salida_proporcional = KP * error;
+    const float salida_sin_sat = salida_proporcional + integrador;
 
-    const float salida_sin_sat =
-        KP * error + integrador + delta_integrador;
-
-    const bool saturado_alto = salida_sin_sat > DUTY_MAX;
-    const bool saturado_bajo = salida_sin_sat < 0.0f;
+    const bool saturado_alto = salida_sin_sat >= DUTY_MAX;
+    const bool saturado_bajo = salida_sin_sat <= 0.0f;
 
     if (!((saturado_alto && error > 0.0f) ||
           (saturado_bajo && error < 0.0f)))
     {
-        integrador += delta_integrador;
+        integrador += KI * TS * error;
     }
 
-    error_anterior = error;
-
-    float salida = KP * error + integrador;
+    float salida = salida_proporcional + integrador;
 
     if (salida > DUTY_MAX)
         salida = DUTY_MAX;
@@ -159,59 +161,22 @@ void actualizarReferenciaAutomatica()
         ? VOUT_REFERENCE_HIGH_V
         : VOUT_REFERENCE_LOW_V;
 
-    voltage_reference_sense_V = referencia_vout / 10.0f;
+    voltage_reference_adc_V =
+        IL300_ADC_AT_7V + IL300_ADC_SLOPE * (referencia_vout - 7.0f);
+    integrador = referencia_vout / VIN_BUCK_V;
     duty_generador_porcentaje =
-        voltage_reference_sense_V / VOLTAGE_REFERENCE_PWM_MAX_V * 100.0f;
+        voltage_reference_adc_V / VOLTAGE_REFERENCE_PWM_MAX_V * 100.0f;
 
     digitalWrite(PIN_IREF_DIGITAL, referencia_alta ? HIGH : LOW);
     actualizarPWMGenerador();
 }
 
-void leerDutyPorSerie()
-{
-    if (!Serial.available())
-        return;
-
-    String entrada = Serial.readStringUntil('\n');
-    entrada.trim();
-
-    if (entrada.length() == 0)
-        return;
-
-    const float duty_recibido = entrada.toFloat();
-
-    if (duty_recibido < 0.0f || duty_recibido > 100.0f)
-    {
-        Serial.println("Error: introduce un duty entre 0 y 100.");
-        return;
-    }
-
-    duty_generador_porcentaje = duty_recibido;
-    voltage_reference_sense_V =
-        duty_generador_porcentaje / 100.0f *
-        VOLTAGE_REFERENCE_PWM_MAX_V;
-
-    digitalWrite(
-        PIN_IREF_DIGITAL,
-        duty_generador_porcentaje >= 50.0f ? HIGH : LOW
-    );
-
-    actualizarPWMGenerador();
-
-    Serial.print("Duty PWM GPIO26 actualizado: ");
-    Serial.print(duty_generador_porcentaje, 2);
-    Serial.println(" %");
-}
-
 void setup()
 {
-    Serial.begin(115200);
-    delay(500);
-
     analogReadResolution(12);
-    analogSetPinAttenuation(PIN_ADC_CORRIENTE, ADC_11db);
+    analogSetPinAttenuation(PIN_ADC_FEEDBACK, ADC_11db);
 
-    pinMode(PIN_ADC_CORRIENTE, INPUT);
+    pinMode(PIN_ADC_FEEDBACK, INPUT);
     pinMode(PIN_IREF_DIGITAL, OUTPUT);
     digitalWrite(PIN_IREF_DIGITAL, duty_generador_porcentaje >= 50.0f);
 
@@ -242,22 +207,6 @@ void setup()
     const uint64_t periodo_us =
         (uint64_t)(1e6f / CONTROL_FS_HZ);
     timerAlarm(timerControl, periodo_us, true, 0);
-
-    Serial.println("Control de tension buck con IL300 + generador PWM");
-    Serial.print("PWM generador: GPIO ");
-    Serial.println(PIN_PWM_GENERADOR);
-    Serial.print("Entrada ADC IL300: GPIO ");
-    Serial.println(PIN_ADC_CORRIENTE);
-    Serial.print("Referencia inicial Vout: ");
-    Serial.print(VOUT_REFERENCE_LOW_V, 3);
-    Serial.println(" V equivalente");
-    Serial.print("PWM de control: GPIO ");
-    Serial.println(PIN_PWM_CONTROL);
-    Serial.print("PWM realimentacion filtrada: GPIO ");
-    Serial.println(PIN_SALIDA_FILTRADA);
-    Serial.print("Indicador referencia: GPIO ");
-    Serial.println(PIN_IREF_DIGITAL);
-    Serial.println("Referencia automatica GPIO26: 1 V / 10 V cada 20 ms");
 }
 
 void loop()
@@ -269,7 +218,7 @@ void loop()
 
     bandera_control = false;
 
-    const float feedback_V = leerFeedbackIL300V();
+    const float feedback_V = leerFeedbackADC_V();
 
     feedback_filtrado_V +=
         FILTRO_IL300_ALPHA *
@@ -277,7 +226,7 @@ void loop()
 
     // Error positivo: falta tension, por lo que el PI aumenta el duty.
     const float error =
-        voltage_reference_sense_V - feedback_filtrado_V;
+        voltage_reference_adc_V - feedback_filtrado_V;
 
     duty_control = compensadorPI(error);
     escribirPWM(duty_control);
@@ -293,20 +242,4 @@ void loop()
         PIN_SALIDA_FILTRADA,
         (uint32_t)(duty_feedback * LEDC_MAX_DUTY)
     );
-
-    static uint16_t contador_print = 0;
-    if (++contador_print >= 500)
-    {
-        contador_print = 0;
-
-        Serial.print("Vref=");
-        Serial.print(voltage_reference_sense_V, 3);
-        Serial.print(" V   Vsense=");
-        Serial.print(feedback_filtrado_V, 3);
-        Serial.print(" V   Error=");
-        Serial.print(error, 3);
-        Serial.print(" V   Duty=");
-        Serial.print(duty_control * 100.0f, 2);
-        Serial.println(" %");
-    }
 }
