@@ -9,7 +9,7 @@ PWM de 20 kHz para el interruptor o driver del buck.
 En cada vuelta del `loop()` se hace lo siguiente:
 
 1. Se lee la tension del ADC.
-2. Cada 20 ms se cambia la referencia entre `setpointHigh` y `setpointLow`.
+2. La referencia se fija con el comando `sp=valor` desde el monitor serie.
 3. El PI calcula el duty a partir del error:
 
    ```text
@@ -22,8 +22,7 @@ En cada vuelta del `loop()` se hace lo siguiente:
 5. Cada 50 ms se envian los datos al puerto serie para observarlos con el
    Serial Plotter.
 
-El pin `PIN_SYNC` cambia junto con la referencia: permanece en `HIGH` para la
-referencia alta y en `LOW` para la baja.
+El pin `PIN_SYNC` queda disponible como senal de sincronismo o indicador.
 
 ## Pines y parametros
 
@@ -37,15 +36,13 @@ Parametros iniciales:
 
 - Frecuencia PWM: `20 kHz`
 - Resolucion PWM: `10 bits` (valor maximo `1023`)
-- Referencia alta: `12 V`
-- Referencia baja: `7 V`
+- Referencia inicial: `5 V`
 - `Kp`: `0.01`
 - `Ki`: `35.0`
 
 ### Conversion del ADC
 
-El codigo usa `analogReadMilliVolts()` y multiplica el resultado por `0.0108`.
-La ganancia calibrada actualmente es 12.85 entre la tension real del buck y la
+La ganancia calibrada actualmente es 10.28 entre la tension real del buck y la
 tension que llega al ADC. Si se cambia el divisor o la calibracion, hay que
 cambiar ese factor en `updateControl()`.
 
@@ -70,8 +67,7 @@ Enter:
 | --- | --- | --- |
 | `kp=valor` | Cambia la ganancia proporcional | `kp=0.02` |
 | `ki=valor` | Cambia la ganancia integral | `ki=30` |
-| `sph=valor` | Cambia la referencia alta en voltios | `sph=12` |
-| `spl=valor` | Cambia la referencia baja en voltios | `spl=7` |
+| `sp=valor` | Cambia la referencia fija en voltios | `sp=9.5` |
 | `info` | Muestra parametros y valores actuales | `info` |
 
 Los cambios se mantienen solo mientras el ESP32 esta encendido, porque no se
