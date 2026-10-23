@@ -12,7 +12,7 @@ después el semiciclo negativo completo.
 | `SPWM_POSITIVA` | 25 | Entrada `INA` del UCC21520 |
 | `SPWM_NEGATIVA` | 26 | Entrada `INB` del UCC21520 |
 
-Los GPIO se pueden cambiar al principio de `Inverter.ino`:
+Los GPIO se pueden cambiar al principio de `spwm.ino`:
 
 ```cpp
 constexpr uint8_t PIN_SPWM_POSITIVA = 25;
